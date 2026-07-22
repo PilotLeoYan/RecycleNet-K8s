@@ -1,0 +1,54 @@
+[project]
+name = "recyclenet-k8s"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "LeoYan",email = "leofabyano@gmail.com"}
+]
+requires-python = ">=3.14"
+dependencies = [
+    "torch (>=2.13.0,<3.0.0)",
+    "mlflow (>=3.14.0,<4.0.0)",
+    "scikit-learn (>=1.9.0,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.source]]
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu126"
+priority = "explicit"
+
+
+[tool.poetry.dependencies]
+torch = {source = "pytorch-gpu"}
+
+[dependency-groups]
+dev = [
+    "ruff (>=0.15.21,<0.16.0)",
+    "mypy (>=2.3.0,<3.0.0)",
+    "pre-commit (>=4.6.0,<5.0.0)",
+    "pytest (>=9.1.1,<10.0.0)"
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unreachable = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
