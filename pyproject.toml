@@ -49,6 +49,11 @@ disallow_untyped_defs = true
 warn_return_any = true
 warn_unreachable = true
 ignore_missing_imports = true
+exclude = [
+    "^data",
+    "^trashnet",
+]
+explicit_package_bases = true
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
