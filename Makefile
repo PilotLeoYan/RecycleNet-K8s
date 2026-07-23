@@ -10,5 +10,8 @@ lint:
 test:
 	poetry run pytest
 
+fix:
+	poetry run ruff check . --fix
+
 check:
 	poetry run pre-commit run --all-files
