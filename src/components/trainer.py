@@ -1,16 +1,19 @@
-# TODO:
-# add metrics as a dict at the end of:
-# - _train_step()
-# - _valid_step()
-
 from datetime import date
 from pathlib import Path
 
-import mlflow
+import numpy as np
 import torch
 from torch import nn
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
+
+from src.components.log_model import LogModel
+from src.components.metrics import evals
+from src.utils import get_logger
+
+logger = get_logger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class ModelTrainer:
@@ -21,8 +24,7 @@ class ModelTrainer:
         val_loader: DataLoader,
         criterion: nn.Module,
         optimizer: Optimizer,
-        device: torch.device,
-        weights_path: Path,
+        device: torch.device | str,
     ):
         """"""
         self.model = model
@@ -30,18 +32,15 @@ class ModelTrainer:
         self.val_loader = val_loader
         self.criterion = criterion
         self.optimizer = optimizer
-        self.device = device
-        self.weights_path = weights_path
+        self.device = torch.device(device) if isinstance(device, str) else device
 
+        self.log_model: LogModel = LogModel()
         self.model.to(self.device)
 
-    def _train_step(self) -> tuple[float, dict[str, float]]:
+    def _train_step(self) -> float:
         """"""
         self.model.train()
         running_loss = 0.0
-
-        # edit this line
-        metrics: dict[str, float] = dict()
 
         for batch_x, batch_y in self.train_loader:
             batch_x = batch_x.to(self.device, non_blocking=True)
@@ -54,9 +53,10 @@ class ModelTrainer:
             loss.backward()
             self.optimizer.step()
 
-            running_loss += loss.item()
-        avg_loss = running_loss / len(self.train_loader)
-        return avg_loss, metrics
+            running_loss += loss.item() * batch_y.size(0)
+
+        avg_loss = running_loss / len(self.train_loader.dataset)  # type: ignore
+        return avg_loss  # type: ignore
 
     @torch.inference_mode()
     def _valid_step(self) -> tuple[float, dict[str, float]]:
@@ -64,8 +64,8 @@ class ModelTrainer:
         self.model.eval()
         running_vloss = 0.0
 
-        # edit this line
-        metrics: dict[str, float] = dict()
+        batchs_predictions: list[np.ndarray] = []
+        batchs_labels: list[np.ndarray] = []
 
         for vbatch_x, vbatch_y in self.val_loader:
             vbatch_x = vbatch_x.to(self.device, non_blocking=True)
@@ -75,15 +75,24 @@ class ModelTrainer:
             vloss = self.criterion(vy_pred, vbatch_y)
 
             running_vloss += vloss.item()
+
+            # convert logits to predictions
+            predictions = torch.argmax(vy_pred, dim=1)
+            batchs_predictions.extend(predictions.detach().cpu().numpy())
+            batchs_labels.extend(vbatch_y.cpu().numpy())
+
         avg_loss_v = running_vloss / len(self.val_loader)
+        metrics = evals(np.array(batchs_labels), np.array(batchs_predictions))
         return avg_loss_v, metrics
 
-    def _save_weights(self, is_best: bool = False) -> Path:
+    def _save_weights(self, weights_path: Path, is_best: bool = False) -> Path:
         """"""
         if is_best:
-            path = self.weights_path / f"best-{date.today()}.pth"
+            path = weights_path / Path(f"best-{date.today()}.pth")
         else:
-            path = self.weights_path / f"{date.today()}.pth"
+            path = weights_path / Path(f"{date.today()}.pth")
+
+        weights_path.mkdir(parents=True, exist_ok=True)
 
         torch.save(
             self.model.state_dict(),
@@ -91,35 +100,67 @@ class ModelTrainer:
         )
         return path
 
-    def fit(self, epochs: int, patience: int = 3) -> None:
+    def _registry_model(self, best_path: Path) -> None:
+        self.model.load_state_dict(torch.load(best_path, map_location=self.device))
+        self.model.eval()
+
+        dummy_input = torch.randn(1, *self.val_loader.dataset[0][0].shape).to(
+            self.device
+        )
+        with torch.no_grad():
+            dummy_output = self.model(dummy_input)
+
+        self.log_model.log_model(
+            dummy_input.detach().cpu().numpy(),
+            dummy_output.detach().cpu().numpy(),
+            self.model,
+        )
+
+    def fit(self, epochs: int, weights_path: str, patience: int = 3) -> Path:
         """"""
+        path = Path(weights_path)
+
         best_loss = float("inf")
         epochs_no_improve = 0
+        best_path = None
 
         for epoch in range(epochs):
-            train_loss, train_metrics = self._train_step()
+            train_loss = self._train_step()
             valid_loss, valid_metrics = self._valid_step()
 
-            metrics_to_log = {
-                "train_loss": train_loss,
-                "train_some_metric": -1.0,
-                "valid_loss": valid_loss,
-                "valid_some_metric": -2.0,
-            }
-
-            mlflow.log_metrics(
-                metrics_to_log,
+            self.log_model.log_epoch(
+                train_loss=train_loss,
+                valid_loss=valid_loss,
+                valid_metrics=valid_metrics,
                 step=epoch,
             )
 
+            new_best = False
             if valid_loss < best_loss:
+                new_best = True
                 best_loss = valid_loss
                 epochs_no_improve = 0
-                self._save_weights(True)
+                best_path = self._save_weights(path, True)
+
+            logger.info(
+                "epoch: %i, loss: %.4f, v_loss: %.4f%s",
+                epoch,
+                train_loss,
+                valid_loss,
+                ", ⭐️" if new_best else "",
+            )
+
+            if new_best:
                 continue
 
             epochs_no_improve += 1
             if epochs_no_improve >= patience:
                 break
 
-        self._save_weights()
+        if best_path is None:
+            best_path = self._save_weights(path, False)
+
+        if best_path.exists():
+            self._registry_model(best_path)
+
+        return best_path
