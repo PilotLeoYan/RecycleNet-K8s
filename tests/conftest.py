@@ -30,7 +30,10 @@ def fake_dataset(tmp_path: Path) -> Path:
 @pytest.fixture
 def fake_dataset_zip(tmp_path: Path, fake_dataset: Path) -> Path:
     zip_path = tmp_path / "fake-compressed"
-
-    shutil.make_archive(base_name=str(zip_path), format="zip", root_dir=fake_dataset)
-
+    shutil.make_archive(
+        base_name=str(zip_path),
+        format="zip",
+        root_dir=fake_dataset.parent,
+        base_dir=fake_dataset.name,
+    )
     return tmp_path / "fake-compressed.zip"
