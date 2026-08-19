@@ -15,12 +15,15 @@ def build_mobilenet_v3(num_classes: int, freeze_base: bool = True) -> MobileNetV
         for param in model.parameters():
             param.requires_grad = False
 
-    in_features = model.classifier[0].in_features
-    out_features = model.classifier[0].out_features
-    model.classifier = nn.Sequential(
-        nn.Linear(in_features, out_features, bias=True),
-        nn.Hardswish(),
-        nn.Dropout(p=0.2, inplace=True),
-        nn.Linear(out_features, num_classes, bias=True),
+    # only reaplce the last layer
+    last_in_features: int = model.classifier[-1].in_features  # type: ignore
+    model.classifier[-1] = nn.Linear(
+        in_features=last_in_features,
+        out_features=num_classes,
+        bias=True,
     )
+
+    # ensure that new last layer is trainable
+    for param in model.classifier[-1].parameters():
+        param.requires_grad = True
     return model
