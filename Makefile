@@ -1,4 +1,4 @@
-.PHONY: format lint test check
+.PHONY: format lint test fix check
 
 format:
 	poetry run ruff format .
