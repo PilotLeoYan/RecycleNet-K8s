@@ -9,7 +9,6 @@ from torch.utils.data import DataLoader, Dataset, Subset, random_split
 
 @dataclass
 class DataTransformationConfig:
-    raw_data_dir: Path
     torch_manual_seed: int = 42
     tensor_float: torch.dtype = torch.float32
     # MobileNetV3 Standard Input Format
@@ -45,8 +44,10 @@ class TransformSubset(Dataset):
 class DataTransformation:
     def __init__(self, config: DataTransformationConfig):
         self.config = config
+        self.classes: list[str] = []
+        self.class_to_idx: dict[str, int] = {}
 
-    def get_transforms(self) -> tuple[v2.Compose, v2.Compose]:
+    def _get_transforms(self) -> tuple[v2.Compose, v2.Compose]:
         """"""
         base_transform = v2.Compose(
             [
@@ -79,11 +80,11 @@ class DataTransformation:
 
         return train_compose, val_transform
 
-    def get_dataset(self) -> datasets.ImageFolder:
+    def _get_dataset(self, raw_data_dir: Path) -> datasets.ImageFolder:
         """"""
-        return datasets.ImageFolder(root=self.config.raw_data_dir)
+        return datasets.ImageFolder(root=raw_data_dir)
 
-    def get_subsets(self, dataset: Dataset) -> list[Subset]:
+    def _get_subsets(self, dataset: Dataset) -> list[Subset]:
         torch.manual_seed(self.config.torch_manual_seed)
         return random_split(
             dataset,
@@ -94,7 +95,7 @@ class DataTransformation:
             ),
         )
 
-    def get_dataloader(self, dataset: Dataset, is_train: bool) -> DataLoader:
+    def _get_dataloader(self, dataset: Dataset, is_train: bool) -> DataLoader:
         return DataLoader(
             dataset,
             batch_size=self.config.batch_size,
@@ -104,17 +105,23 @@ class DataTransformation:
             drop_last=is_train,
         )
 
-    def get_dataloaders(self) -> tuple[DataLoader, DataLoader, DataLoader]:
-        full_dataset = self.get_dataset()
-        train_transform, val_transform = self.get_transforms()
+    def get_dataloaders(
+        self, raw_data_dir: Path
+    ) -> tuple[DataLoader, DataLoader, DataLoader]:
+        full_dataset = self._get_dataset(raw_data_dir)
 
-        train_sub, val_sub, test_sub = self.get_subsets(full_dataset)
+        self.classes = full_dataset.classes
+        self.class_to_idx = full_dataset.class_to_idx
+
+        train_transform, val_transform = self._get_transforms()
+
+        train_sub, val_sub, test_sub = self._get_subsets(full_dataset)
 
         train_ds = TransformSubset(train_sub, train_transform)
         val_ds = TransformSubset(val_sub, val_transform)
         test_ds = TransformSubset(test_sub, val_transform)
 
-        train_loader = self.get_dataloader(train_ds, True)
-        val_loader = self.get_dataloader(val_ds, False)
-        test_loader = self.get_dataloader(test_ds, False)
+        train_loader = self._get_dataloader(train_ds, True)
+        val_loader = self._get_dataloader(val_ds, False)
+        test_loader = self._get_dataloader(test_ds, False)
         return train_loader, val_loader, test_loader
