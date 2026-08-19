@@ -1,3 +1,6 @@
+# agents
+.agents/
+
 # directories
 __pycache__/
 .mypy_cache/
@@ -6,3 +9,10 @@ __pycache__/
 notes/
 trashnet/
 data/
+
+# mlflow
+mlruns/
+mlflow.db
+
+# files
+pyrightconfig.json
