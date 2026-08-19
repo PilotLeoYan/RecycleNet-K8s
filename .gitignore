@@ -1,4 +1,18 @@
+# agents
+.agents/
+
 # directories
 __pycache__/
+.mypy_cache/
+.pytest_cache/
 .ruff_cache/
 notes/
+trashnet/
+data/
+
+# mlflow
+mlruns/
+mlflow.db
+
+# files
+pyrightconfig.json

@@ -1,4 +1,4 @@
-.PHONY: format lint test check
+.PHONY: format lint test fix check
 
 format:
 	poetry run ruff format .
@@ -9,6 +9,9 @@ lint:
 
 test:
 	poetry run pytest
+
+fix:
+	poetry run ruff check . --fix
 
 check:
 	poetry run pre-commit run --all-files

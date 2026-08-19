@@ -13,16 +13,15 @@ import logging
 import os
 import sys
 
-from .formatter import JSONFormatter, LocalFormatter
+from src.utils.formatter import JSONFormatter, LocalFormatter
 
 
-# environment detection
-def _running_on_gcp() -> bool:
-    """Detect whether we are running inside a GCP environment."""
-    app_env = os.environ.get("APP_ENV", "").lower()
-    if app_env in ("gcp", "cloud", "production", "prod"):
+def _use_json_logging() -> bool:
+    """Choose whether use JSON or local console format."""
+    log_format = os.environ.get("LOG_FORMAT", "").lower()
+    if log_format == "json":
         return True
-    if app_env in ("local", "dev", "development"):
+    if log_format in ("text", "local", "consolse"):
         return False
 
     gcp_signals = (
@@ -31,7 +30,6 @@ def _running_on_gcp() -> bool:
         "GAE_ENV",  # App Engine
         "CLOUD_ML_PROJECT_ID",  # Vertex AI / AI Platform Training
         "AIP_MODEL_DIR",  # Vertex AI custom training / prediction
-        "KUBERNETES_SERVICE_HOST",  # GKE
     )
     return any(os.environ.get(var) for var in gcp_signals)
 
@@ -55,7 +53,7 @@ def get_logger(name: str, level: int | None = None) -> logging.Logger:
     logger.propagate = False
 
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JSONFormatter() if _running_on_gcp() else LocalFormatter())
+    handler.setFormatter(JSONFormatter() if _use_json_logging() else LocalFormatter())
     logger.addHandler(handler)
 
     return logger
