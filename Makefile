@@ -1,17 +1,17 @@
 .PHONY: format lint test fix check
 
 format:
-	poetry run ruff format .
+	uv run ruff format .
 
 lint:
-	poetry run ruff check .
-	poetry run mypy .
+	uv run ruff check .
+	uv run mypy .
 
 test:
-	poetry run pytest
+	uv run pytest
 
 fix:
-	poetry run ruff check . --fix
+	uv run ruff check . --fix
 
 check:
-	poetry run pre-commit run --all-files
+	uv run pre-commit run --all-files

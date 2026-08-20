@@ -5,32 +5,31 @@ description = ""
 authors = [
     {name = "LeoYan",email = "leofabyano@gmail.com"}
 ]
-requires-python = ">3.14.1, <4"
+requires-python = ">=3.14, <4.0.0"
 dependencies = [
-    "torch (>=2.13.0,<3.0.0)",
-    "mlflow (>=3.14.0,<4.0.0)",
-    "scikit-learn (>=1.9.0,<2.0.0)",
-    "torchvision (>=0.28.0,<0.29.0)",
-    "numpy (>=2.5.2,<3.0.0)",
-    "matplotlib (>=3.11.1,<4.0.0)",
-    "graphql-core (>=3.2.0)",
-    "graphene (>=3.0)"
+    "torch>=2.13.0,<3.0.0",
+    "mlflow>=3.14.0,<4.0.0",
+    "scikit-learn>=1.9.0,<2.0.0",
+    "torchvision>=0.28.0,<0.29.0",
+    "numpy>=2.5.2,<3.0.0",
+    "matplotlib>=3.11.1,<4.0.0",
+    "graphql-core>=3.2.0",
+    "graphene>=3.0"
 ]
 
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[[tool.poetry.source]]
+[tool.uv.sources]
+torch = [{ index = "pytorch-gpu" }]
+torchvision = [{ index = "pytorch-gpu" }]
+
+[[tool.uv.index]]
 name = "pytorch-gpu"
 url = "https://download.pytorch.org/whl/cu126"
-priority = "explicit"
-
-
-[tool.poetry.dependencies]
-torch = {source = "pytorch-gpu"}
-torchvision = {source = "pytorch-gpu"}
+explicit = true
 
 [dependency-groups]
 dev = [
@@ -63,3 +62,6 @@ explicit_package_bases = true
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[tool.uv]
+package = false
