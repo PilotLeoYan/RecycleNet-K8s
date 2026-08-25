@@ -1,0 +1,51 @@
+site_name: RecycleNet MLOps Docs
+site_description: API documentation and reference for RecycleNet-K8s
+site_author: LeoYan
+repo_url: https://github.com/PilotLeoYan/RecycleNet-K8s
+repo_name: RecycleNet-K8s
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Cambiar a modo oscuro
+    - scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Cambiar a modo claro
+  features:
+    - navigation.instant # Ultra-fast SPA-style charging
+    - navigation.tabs # Top bar with tabs
+    - navigation.sections # Hierarchical sections
+    - navigation.top # Floating ‘Back to top’ button
+    - search.suggest # Search engine suggestions
+    - search.highlight # Highlight terms found
+    - content.code.copy # Button for copying code snippets
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.] # project root to resolve src.* modules
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_source: true # Displays a drop-down menu with the original source code
+            show_category_heading: true
+            merge_init_into_class: true # Displays the __init__ parameters in the class header
+
+nav:
+  - Overview: index.md
+  - Architecture & MLOps: architecture.md
+  - API Reference:
+      - Components: reference/components.md
+      - Pipelines: reference/pipeline.md
+      - Utilities: reference/utils.md

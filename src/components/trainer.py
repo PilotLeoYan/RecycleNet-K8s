@@ -1,3 +1,5 @@
+"""Training loop execution, validation monitoring, early stopping, and checkpointing."""
+
 from datetime import date
 from pathlib import Path
 
@@ -17,6 +19,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class ModelTrainer:
+    """Orchestrates model training, validation, early stopping, and tracking.
+
+    Attributes:
+        model: PyTorch model being trained.
+        train_loader: Training DataLoader.
+        val_loader: Validation DataLoader.
+        criterion: Loss function module.
+        optimizer: Optimization algorithm instance.
+        device: Computation device (e.g., 'cuda' or 'cpu').
+        log_model: MLflow logging helper.
+    """
+
     def __init__(
         self,
         model: nn.Module,
@@ -26,7 +40,16 @@ class ModelTrainer:
         optimizer: Optimizer,
         device: torch.device | str,
     ):
-        """"""
+        """Initializes ModelTrainer with training dependencies and target device.
+
+        Args:
+            model: PyTorch neural network to train.
+            train_loader: DataLoader providing training mini-batches.
+            val_loader: DataLoader providing validation mini-batches.
+            criterion: Loss function module (e.g. CrossEntropyLoss).
+            optimizer: Optimizer instance (e.g. AdamW).
+            device: Target torch device or device string ('cuda', 'cpu').
+        """
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -38,7 +61,11 @@ class ModelTrainer:
         self.model.to(self.device)
 
     def _train_step(self) -> float:
-        """"""
+        """Executes a single training epoch across all mini-batches in train_loader.
+
+        Returns:
+            float: Average training loss across all samples in the epoch.
+        """
         self.model.train()
         running_loss = 0.0
 
@@ -60,7 +87,12 @@ class ModelTrainer:
 
     @torch.inference_mode()
     def _valid_step(self) -> tuple[float, dict[str, float]]:
-        """"""
+        """Executes a validation pass over val_loader computing loss and metrics.
+
+        Returns:
+            tuple[float, dict[str, float]]: Average validation loss and computed
+                metrics dictionary.
+        """
         self.model.eval()
         running_vloss = 0.0
 
@@ -86,7 +118,15 @@ class ModelTrainer:
         return avg_loss_v, metrics
 
     def _save_weights(self, weights_path: Path, is_best: bool = False) -> Path:
-        """"""
+        """Saves current model weights (state dict) to the specified path.
+
+        Args:
+            weights_path: Directory path where weights will be stored.
+            is_best: Whether this checkpoint represents the best validation loss so far.
+
+        Returns:
+            Path: Full filepath of the saved .pth weights checkpoint.
+        """
         if is_best:
             path = weights_path / Path(f"best-{date.today()}.pth")
         else:
@@ -101,6 +141,11 @@ class ModelTrainer:
         return path
 
     def _registry_model(self, best_path: Path) -> None:
+        """Loads best checkpoint and logs model artifact and signature to MLflow.
+
+        Args:
+            best_path: Filepath of the best weights checkpoint.
+        """
         self.model.load_state_dict(torch.load(best_path, map_location=self.device))
         self.model.eval()
 
@@ -117,7 +162,16 @@ class ModelTrainer:
         )
 
     def fit(self, epochs: int, weights_path: str, patience: int = 3) -> Path:
-        """"""
+        """Runs the complete training and validation cycle with early stopping.
+
+        Args:
+            epochs: Maximum number of training epochs to execute.
+            weights_path: Destination directory string to save checkpoints.
+            patience: Number of epochs without improvement before early stopping.
+
+        Returns:
+            Path: Path to the best saved model weights checkpoint.
+        """
         path = Path(weights_path)
 
         best_loss = float("inf")

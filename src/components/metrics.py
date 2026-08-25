@@ -1,3 +1,5 @@
+"""Evaluation metrics computation for multi-class classification."""
+
 import numpy as np
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
@@ -14,6 +16,18 @@ MULTI_CLASS = "ovr"
 
 
 def evals(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+    """Computes standard multi-class evaluation metrics.
+
+    Calculates accuracy, macro-averaged precision, recall, and F1-score.
+
+    Args:
+        y_true: 1D array of ground truth class integer labels.
+        y_pred: 1D array of predicted class integer labels.
+
+    Returns:
+        dict[str, float]: Dictionary containing accuracy, precision, recall,
+            and f1_score.
+    """
     metrics: dict[str, float] = dict()
 
     # 1. Accuracy
@@ -34,7 +48,15 @@ def evals(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
 
 
 def calculate_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
-    """Compute ROC AUC One-vs-Rest."""
+    """Computes macro-averaged One-vs-Rest (OvR) ROC AUC score.
+
+    Args:
+        y_true: 1D array of ground truth class labels.
+        y_score: 2D array of predicted probabilities with shape (n_samples, n_classes).
+
+    Returns:
+        float: Computed ROC AUC score, or 0.0 if calculation fails.
+    """
     try:
         num_classes = y_score.shape[1]
         return float(
@@ -51,6 +73,15 @@ def calculate_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
 
 
 def confusion(y_true: np.ndarray, y_pred: np.ndarray) -> ConfusionMatrixDisplay:
+    """Generates a ConfusionMatrixDisplay object from true and predicted labels.
+
+    Args:
+        y_true: 1D array of ground truth class labels.
+        y_pred: 1D array of predicted class labels.
+
+    Returns:
+        ConfusionMatrixDisplay: Scikit-learn confusion matrix display container.
+    """
     cm = confusion_matrix(y_true, y_pred)
 
     return ConfusionMatrixDisplay(confusion_matrix=cm)

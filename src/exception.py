@@ -1,14 +1,32 @@
+"""Centralized exception handling for the RecycleNet project."""
+
 import traceback
 
 
 class RecycleNetException(Exception):
-    """Base exception from the RecycleNet project with enriched context."""
+    """Custom base exception for the RecycleNet project with enriched error context.
+
+    Captures the origin file, line number, and function name from the underlying
+    traceback when an original exception is provided, formatting a standardized
+    diagnostic message.
+
+    Attributes:
+        message: Descriptive error message explaining the failure context.
+        original_error: The underlying exception that caused this error, if any.
+    """
 
     def __init__(
         self,
         message: str,
         original_error: BaseException | None = None,
     ) -> None:
+        """Initializes RecycleNetException with detailed error and traceback metadata.
+
+        Args:
+            message: High-level explanation of what failed.
+            original_error: The original caught exception to chain and extract
+                context from.
+        """
         self.message: str = message
         self.original_error: BaseException | None = original_error
 
@@ -20,7 +38,7 @@ class RecycleNetException(Exception):
                 formatted = (
                     f"{message} | Cause: [{type(original_error).__name__}: "
                     f"{original_error}] "
-                    f"en {last_frame.filename}, line {last_frame.lineno} "
+                    f"in {last_frame.filename}, line {last_frame.lineno} "
                     f"({last_frame.name})"
                 )
             else:

@@ -1,3 +1,5 @@
+"""End-to-end training pipeline orchestrator for RecycleNet."""
+
 import os
 import tempfile
 from dataclasses import dataclass
@@ -23,6 +25,15 @@ logger = get_logger(__name__)
 
 @dataclass
 class TrainingPipelineConfig:
+    """Configuration options for the training pipeline run.
+
+    Attributes:
+        num_classes: Number of distinct classification categories.
+        epochs: Number of complete passes over the training dataset.
+        patience: Epoch patience threshold for early stopping.
+        device: Device identifier string ('cuda' or 'cpu').
+    """
+
     num_classes: int = 6
     epochs: int = 1
     patience: int = 3
@@ -30,7 +41,23 @@ class TrainingPipelineConfig:
 
 
 class TrainPipeline:
+    """Orchestrates end-to-end ingestion, training, evaluation, and tracking.
+
+    Attributes:
+        config: High-level pipeline execution configuration.
+        seed_config: Seeds configuration for deterministic execution.
+        ingestion_config: Dataset extraction settings.
+        ingestion: DataIngestion component instance.
+        transformation_config: Image transformation settings.
+        transformation: DataTransformation component instance.
+    """
+
     def __init__(self, config: TrainingPipelineConfig):
+        """Initializes the training pipeline with configuration and subcomponents.
+
+        Args:
+            config: Training pipeline configuration settings.
+        """
         self.config = config
         self.seed_config = ReproducibilityConfig()
 
@@ -43,11 +70,19 @@ class TrainPipeline:
         make_reproducibility(self.seed_config)
 
     def run(self) -> None:
-        """Manages the entire training lifecycle:
+        """Executes the full end-to-end training and evaluation workflow.
 
-        - Train loop.
-        - Valid loop.
-        - Final test evaluation.
+        Steps:
+            1. Ingests and unpacks the raw dataset archive.
+            2. Builds torchvision transformations and train/val/test DataLoaders.
+            3. Instantiates pre-trained MobileNetV3 with custom classification head.
+            4. Configures loss function and optimizer.
+            5. Initializes MLflow tracking run and logs parameters and tags.
+            6. Executes training loop with early stopping.
+            7. Evaluates best checkpoint on test set and logs metrics/confusion matrix.
+
+        Raises:
+            RecycleNetException: If any pipeline stage encounters a fatal error.
         """
         logger.info("Starting training pipeline...")
 
