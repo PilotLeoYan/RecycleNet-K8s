@@ -1,12 +1,15 @@
-"""
-src/utils/logger.py
+"""Centralized logging utility for the RecycleNet project.
+
+Provides a unified logger configured for either local development (colorized text)
+or cloud runtime environments (Google Cloud Logging structured JSON).
 
 Example:
-    from utils import get_logger
+    ```python
+    from src.utils.logger import get_logger
 
     logger = get_logger(__name__)
-
-    logger.info('Starting project', extra={'framework': 'pytorch', 'device': 'cuda'})
+    logger.info("Starting training step", extra={"epoch": 1, "device": "cuda"})
+    ```
 """
 
 import logging
@@ -17,11 +20,19 @@ from src.utils.formatter import JSONFormatter, LocalFormatter
 
 
 def _use_json_logging() -> bool:
-    """Choose whether use JSON or local console format."""
+    """Determines whether to format logs as structured JSON or colorized console text.
+
+    Checks the `LOG_FORMAT` environment variable first, then probes for common
+    Google Cloud runtime environment variables (Cloud Run, Functions, App Engine,
+    Vertex AI).
+
+    Returns:
+        bool: True if structured JSON logging should be enabled, False otherwise.
+    """
     log_format = os.environ.get("LOG_FORMAT", "").lower()
     if log_format == "json":
         return True
-    if log_format in ("text", "local", "consolse"):
+    if log_format in ("text", "local", "console"):
         return False
 
     gcp_signals = (
@@ -35,7 +46,19 @@ def _use_json_logging() -> bool:
 
 
 def get_logger(name: str, level: int | None = None) -> logging.Logger:
-    """ """
+    """Creates or retrieves a configured logger instance.
+
+    Configures a `StreamHandler` targeting `sys.stdout` with either `JSONFormatter`
+    or `LocalFormatter` depending on the runtime environment.
+
+    Args:
+        name: The name of the logger, typically `__name__` of the calling module.
+        level: Optional logging level. If None, defaults to the `LOG_LEVEL`
+            environment variable or `logging.INFO`.
+
+    Returns:
+        logging.Logger: Configured logger instance ready for logging.
+    """
     logger = logging.getLogger(name)
 
     # if it already configured

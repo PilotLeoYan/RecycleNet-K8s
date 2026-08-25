@@ -1,3 +1,5 @@
+"""Custom logging formatters for Google Cloud Logging and local terminal output."""
+
 import json
 import logging
 from datetime import UTC, datetime
@@ -17,10 +19,21 @@ _RESERVED_RECORD_KEYS = set(
 
 
 class JSONFormatter(logging.Formatter):
-    """One JSON object per line, shapped for Cloud Logging's auto-parser."""
+    """JSON formatter formatted for Google Cloud Logging structured ingestion.
+
+    Serializes log records into single-line JSON objects with severity, timestamp,
+    logger name, message, and any additional structured fields passed in `extra`.
+    """
 
     def format(self, record: logging.LogRecord) -> str:
-        """"""
+        """Formats the specified LogRecord as a single-line JSON payload.
+
+        Args:
+            record: The LogRecord instance to format.
+
+        Returns:
+            str: JSON-encoded string representation of the log record.
+        """
         payload = {
             "severity": _LEVEL_TO_GCP_SEVERITY.get(record.levelno, "DEFAULT"),
             "message": record.getMessage(),
@@ -46,7 +59,15 @@ class JSONFormatter(logging.Formatter):
 
 
 class LocalFormatter(logging.Formatter):
-    """Colorized formatter for local development with full traceback support."""
+    """Colorized console formatter for local development with traceback support.
+
+    Provides ANSI colored output based on logging severity level and includes
+    formatted tracebacks when exception information is present in the record.
+
+    Attributes:
+        COLORS: Mapping of logging severity levels to ANSI color escape codes.
+        RESET: ANSI escape code to reset terminal formatting.
+    """
 
     COLORS: dict[int, str] = {
         logging.DEBUG: "\033[36m",  # cyan
@@ -58,6 +79,11 @@ class LocalFormatter(logging.Formatter):
     RESET: str = "\033[0m"
 
     def __init__(self, datefmt: str = "%H:%M:%S") -> None:
+        """Initializes the LocalFormatter with per-level ANSI color formatters.
+
+        Args:
+            datefmt: Format string for the timestamp in log messages.
+        """
         super().__init__(datefmt=datefmt)
 
         self._formatters = {
@@ -75,6 +101,14 @@ class LocalFormatter(logging.Formatter):
 
     @override
     def format(self, record: logging.LogRecord) -> str:
+        """Formats the LogRecord with ANSI color coding and exception details.
+
+        Args:
+            record: The LogRecord instance to format.
+
+        Returns:
+            str: Colorized and formatted log message string.
+        """
         formatter = self._formatters.get(record.levelno, self._default)
         message = formatter.format(record)
 

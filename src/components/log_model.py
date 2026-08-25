@@ -1,3 +1,5 @@
+"""MLflow tracking integration for logging metrics, artifacts, and PyTorch models."""
+
 from typing import Any
 
 import mlflow
@@ -7,7 +9,10 @@ from mlflow.models import infer_signature
 
 
 class LogModel:
+    """Handles communication with MLflow for run tracking and model registry."""
+
     def __init__(self) -> None:
+        """Initializes the LogModel tracking helper."""
         pass
 
     def log_epoch(
@@ -17,6 +22,15 @@ class LogModel:
         valid_metrics: dict[str, float],
         step: int,
     ) -> None:
+        """Logs training and validation metrics for a specific epoch step.
+
+        Args:
+            train_loss: Average loss on the training dataset.
+            valid_loss: Average loss on the validation dataset.
+            valid_metrics: Dictionary containing accuracy, precision, recall, and
+                f1_score.
+            step: Epoch index (step) for MLflow metric history.
+        """
         if not mlflow.active_run():
             return
 
@@ -38,7 +52,13 @@ class LogModel:
         metrics: dict[str, float],
         fig_cm: Any,
     ) -> None:
+        """Logs final test evaluation metrics and confusion matrix plot to MLflow.
 
+        Args:
+            roc: Area Under ROC Curve score on test dataset.
+            metrics: Dictionary of test metrics (accuracy, precision, recall, f1_score).
+            fig_cm: Matplotlib Figure object displaying the confusion matrix.
+        """
         if not mlflow.active_run():
             return
 
@@ -58,7 +78,13 @@ class LogModel:
     def log_model(
         self, dummy_input: np.ndarray, dummy_output: np.ndarray, model: Any
     ) -> None:
+        """Logs and registers the trained PyTorch model with schema signature.
 
+        Args:
+            dummy_input: Sample input array for schema signature inference.
+            dummy_output: Corresponding model output array for schema inference.
+            model: Trained PyTorch model instance to log.
+        """
         if not mlflow.active_run():
             return
 
