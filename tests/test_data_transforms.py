@@ -2,11 +2,12 @@ from pathlib import Path
 
 import torch
 
-from src.components.data_transform import DataTransformation, DataTransformationConfig
+from src.components.data_transform import DataTransformation
+from src.config.schema import TransformationConfig
 
 
 def test_dataloaders_return_correct_batch_shape(fake_dataset: Path) -> None:
-    config = DataTransformationConfig(batch_size=4, num_workers=0, pin_memory=False)
+    config = TransformationConfig(batch_size=4, num_workers=0, pin_memory=False)
     data_loader = DataTransformation(config)
     loaders = data_loader.get_dataloaders(raw_data_dir=fake_dataset)
 
@@ -18,20 +19,23 @@ def test_dataloaders_return_correct_batch_shape(fake_dataset: Path) -> None:
 
 
 def test_reproducibility_with_same_seed(fake_dataset: Path) -> None:
-    config = DataTransformationConfig(
+    config = TransformationConfig(
         batch_size=4,
         num_workers=0,
         pin_memory=False,
     )
 
+    torch.manual_seed(42)
     data_loaders1 = DataTransformation(config).get_dataloaders(fake_dataset)
+
+    torch.manual_seed(42)
     data_loaders2 = DataTransformation(config).get_dataloaders(fake_dataset)
 
     for loader1, loader2 in zip(data_loaders1, data_loaders2):
-        torch.manual_seed(42)
+        torch.manual_seed(43)
         input1, target1 = next(iter(loader1))
 
-        torch.manual_seed(42)
+        torch.manual_seed(43)
         input2, target2 = next(iter(loader2))
 
         assert torch.equal(input1, input2)
