@@ -2,29 +2,14 @@
 
 import os
 import random
-from dataclasses import dataclass
 
 import numpy as np
 import torch
 
+from src.config.schema import ReproducibilityConfig
 from src.utils import get_logger
 
 logger = get_logger(__name__)
-
-
-@dataclass
-class ReproducibilityConfig:
-    """Random seed configuration settings for environment reproducibility.
-
-    Attributes:
-        random_seed: Seed for standard Python random and hashseed generation.
-        numpy_seed: Seed for NumPy pseudorandom number generators.
-        torch_seed: Seed for PyTorch CPU and CUDA random number generators.
-    """
-
-    random_seed: int = 42
-    numpy_seed: int = 42
-    torch_seed: int = 42
 
 
 def make_reproducibility(config: ReproducibilityConfig) -> None:

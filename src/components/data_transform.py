@@ -1,6 +1,5 @@
 """Data transformation component for image preprocessing and DataLoaders."""
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import torch
@@ -8,44 +7,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms.v2 as v2
 from torch.utils.data import DataLoader, Dataset, Subset, random_split
 
-
-@dataclass
-class DataTransformationConfig:
-    """Configuration parameters for dataset transformations and DataLoader setup.
-
-    Attributes:
-        torch_manual_seed: Seed for reproducible dataset splitting.
-        tensor_float: Precision dtype for tensor outputs.
-        image_size: Target (height, width) dimensions for model input tensors.
-        image_mean: Channel-wise RGB normalization means (ImageNet defaults).
-        image_std: Channel-wise RGB normalization standard deviations.
-        random_h_flip: Probability of horizontal flip augmentation.
-        random_rotation: Rotation angle range (min, max) or single max angle in degrees.
-        train_split: Proportion of data allocated for training.
-        eval_split: Proportion of data allocated for validation.
-        test_split: Proportion of data allocated for final testing.
-        batch_size: Number of image samples per mini-batch.
-        num_workers: Number of subprocesses for multi-threaded data loading.
-        pin_memory: Whether to copy tensors into CUDA pinned memory before returning.
-    """
-
-    torch_manual_seed: int = 42
-    tensor_float: torch.dtype = torch.float32
-    # MobileNetV3 Standard Input Format
-    image_size: tuple[int, int] = (224, 224)
-    image_mean: tuple[float, float, float] = (0.485, 0.456, 0.406)
-    image_std: tuple[float, float, float] = (0.229, 0.224, 0.225)
-    # Data Augmentation
-    random_h_flip: float = 0.5
-    random_rotation: tuple[int, int] | int = (-90, 90)
-    # Data split
-    train_split: float = 0.7
-    eval_split: float = 0.15
-    test_split: float = 0.15
-    # Data Loader
-    batch_size: int = 32
-    num_workers: int = 4
-    pin_memory: bool = True
+from src.config.schema import TransformationConfig
 
 
 class TransformSubset(Dataset):
@@ -96,7 +58,7 @@ class DataTransformation:
         class_to_idx: Mapping from class names to integer target indices.
     """
 
-    def __init__(self, config: DataTransformationConfig):
+    def __init__(self, config: TransformationConfig):
         """Initializes DataTransformation with configuration.
 
         Args:
@@ -164,7 +126,6 @@ class DataTransformation:
         Returns:
             list[Subset]: Subsets for train, validation, and test splits.
         """
-        torch.manual_seed(self.config.torch_manual_seed)
         return random_split(
             dataset,
             (

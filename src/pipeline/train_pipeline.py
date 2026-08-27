@@ -1,43 +1,23 @@
 """End-to-end training pipeline orchestrator for RecycleNet."""
 
-import os
 import tempfile
-from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 import mlflow
-import torch
 
-from src.components.data_ingestion import DataIngestion, DataIngestionConfig
-from src.components.data_transform import DataTransformation, DataTransformationConfig
+from src.components.data_ingestion import DataIngestion
+from src.components.data_transform import DataTransformation
 from src.components.evaluator import Evaluator
 from src.components.loss_functions import get_criterion
 from src.components.model import build_mobilenet_v3
 from src.components.optimizers import get_optimizer
 from src.components.trainer import ModelTrainer
+from src.config.schema import AppConfig
 from src.exception import RecycleNetException
-from src.pipeline.reproducibility import ReproducibilityConfig, make_reproducibility
+from src.pipeline.reproducibility import make_reproducibility
 from src.utils import get_logger
 
 logger = get_logger(__name__)
-
-
-@dataclass
-class TrainingPipelineConfig:
-    """Configuration options for the training pipeline run.
-
-    Attributes:
-        num_classes: Number of distinct classification categories.
-        epochs: Number of complete passes over the training dataset.
-        patience: Epoch patience threshold for early stopping.
-        device: Device identifier string ('cuda' or 'cpu').
-    """
-
-    num_classes: int = 6
-    epochs: int = 1
-    patience: int = 3
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class TrainPipeline:
@@ -52,22 +32,17 @@ class TrainPipeline:
         transformation: DataTransformation component instance.
     """
 
-    def __init__(self, config: TrainingPipelineConfig):
+    def __init__(self, config: AppConfig):
         """Initializes the training pipeline with configuration and subcomponents.
 
         Args:
             config: Training pipeline configuration settings.
         """
         self.config = config
-        self.seed_config = ReproducibilityConfig()
+        self.ingestion = DataIngestion(config.ingestion)
+        self.transformation = DataTransformation(config.transformation)
 
-        self.ingestion_config = DataIngestionConfig()
-        self.ingestion = DataIngestion(self.ingestion_config)
-
-        self.transformation_config = DataTransformationConfig()
-        self.transformation = DataTransformation(self.transformation_config)
-
-        make_reproducibility(self.seed_config)
+        make_reproducibility(config.reproducibility)
 
     def run(self) -> None:
         """Executes the full end-to-end training and evaluation workflow.
@@ -106,7 +81,7 @@ class TrainPipeline:
 
         try:
             logger.info("Building the MobileNetV3 model...")
-            model = build_mobilenet_v3(self.config.num_classes)
+            model = build_mobilenet_v3(self.config.training.num_classes)
         except Exception as e:
             raise RecycleNetException("Error initialising the model", e) from e
 
@@ -127,18 +102,15 @@ class TrainPipeline:
                 val_loader=valid_loader,
                 criterion=criterion,
                 optimizer=optimizer,
-                device=self.config.device,
+                device=self.config.training.device,
             )
         except Exception as e:
             raise RecycleNetException("Error initialising the trainer", e) from e
 
         logger.info("Training...")
 
-        db_path = Path(__file__).resolve().parents[2] / "mlflow.db"
-        mlflow.set_tracking_uri(
-            os.getenv("MLFLOW_TRACKING_URI", f"sqlite:////{db_path}")
-        )
-        mlflow.set_experiment("RecycleNet_Training")
+        mlflow.set_tracking_uri(self.config.tracking.tracking_uri)
+        mlflow.set_experiment(self.config.tracking.experiment_name)
 
         run_name = f"mobilenetv3_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         with mlflow.start_run(run_name=run_name) as active_run:
@@ -156,22 +128,22 @@ class TrainPipeline:
                         "model_architecture": "mobilenet_v3_small",
                         "dataset": "trashnet",
                         "task": "image_classification",
-                        "hardware": "cuda" if torch.cuda.is_available() else "cpu",
+                        "hardware": self.config.training.device,
                     }
                 )
 
                 mlflow.log_params(
                     {
                         # Pipeline & Hardware
-                        "device": self.config.device,
-                        "epochs": self.config.epochs,
-                        "patience": self.config.patience,
-                        "batch_size": self.transformation_config.batch_size,
+                        "device": self.config.training.device,
+                        "epochs": self.config.training.epochs,
+                        "patience": self.config.training.patience,
+                        "batch_size": self.config.transformation.batch_size,
                         # Seeds
-                        "seed_torch": self.seed_config.torch_seed,
+                        "seed_torch": self.config.reproducibility.torch_seed,
                         # Model
                         "model_architecture": "mobilenet_v3_small",
-                        "num_classes": self.config.num_classes,
+                        "num_classes": self.config.training.num_classes,
                         "freeze_base": True,
                         # Optimizer & Loss
                         "optimizer": optimizer.__class__.__name__,
@@ -181,23 +153,23 @@ class TrainPipeline:
                         ),
                         "criterion": criterion.__class__.__name__,
                         # Preprocessing & Augmentation
-                        "image_size": f"{self.transformation_config.image_size[0]}x"
-                        f"{self.transformation_config.image_size[1]}",
-                        "random_h_flip_prob": self.transformation_config.random_h_flip,
+                        "image_size": f"{self.config.transformation.image_size[0]}x"
+                        f"{self.config.transformation.image_size[1]}",
+                        "random_h_flip_prob": self.config.transformation.random_h_flip,
                         "random_rotation_deg": str(
-                            self.transformation_config.random_rotation
+                            self.config.transformation.random_rotation
                         ),
-                        "split_ratios": f"{self.transformation_config.train_split}/"
-                        f"{self.transformation_config.eval_split}/"
-                        f"{self.transformation_config.test_split}",
+                        "split_ratios": f"{self.config.transformation.train_split}/"
+                        f"{self.config.transformation.eval_split}/"
+                        f"{self.config.transformation.test_split}",
                     }
                 )
 
                 with tempfile.TemporaryDirectory() as temp_dir:
                     best_path = trainer.fit(
-                        epochs=self.config.epochs,
+                        epochs=self.config.training.epochs,
                         weights_path=temp_dir,
-                        patience=self.config.patience,
+                        patience=self.config.training.patience,
                     )
 
                     logger.info("Running test evaluation...")
@@ -205,7 +177,7 @@ class TrainPipeline:
                         model=model,
                         weights_path=best_path,
                         test_loader=test_loader,
-                        device=self.config.device,
+                        device=self.config.training.device,
                     )
                     evaluator.evaluate()
 

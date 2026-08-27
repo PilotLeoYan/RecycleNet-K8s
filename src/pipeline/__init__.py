@@ -1,6 +1,5 @@
-from .train_pipeline import TrainingPipelineConfig, TrainPipeline
+from .train_pipeline import TrainPipeline
 
 __all__ = [
     "TrainPipeline",
-    "TrainingPipelineConfig",
 ]
