@@ -1,4 +1,7 @@
-.PHONY: format lint test fix check
+.PHONY: run format lint test fix check
+
+run:
+	uv run python src
 
 format:
 	uv run ruff format .
