@@ -1,7 +1,8 @@
 .PHONY: run format lint test fix check
 
 run:
-	uv run python src
+	uv run python -m src
+
 
 format:
 	uv run ruff format .

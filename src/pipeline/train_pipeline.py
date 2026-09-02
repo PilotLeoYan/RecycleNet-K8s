@@ -91,7 +91,11 @@ class TrainPipeline:
             raise RecycleNetException("Error initialising the criterio", e) from e
 
         try:
-            optimizer = get_optimizer(model.parameters())
+            optimizer = get_optimizer(
+                filter(lambda p: p.requires_grad, model.parameters()),
+                learning_rate=self.config.training.learning_rate,
+                weight_decay=self.config.training.weight_decay,
+            )
         except Exception as e:
             raise RecycleNetException("Error initialising the optimizer", e) from e
 

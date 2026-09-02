@@ -110,17 +110,4 @@ class LocalFormatter(logging.Formatter):
             str: Colorized and formatted log message string.
         """
         formatter = self._formatters.get(record.levelno, self._default)
-        message = formatter.format(record)
-
-        # If the log contains an exception (exc_info), we add the full traceback
-        if record.exc_info:
-            if not record.exc_text:
-                record.exc_text = self.formatException(record.exc_info)
-            message += f"\n{record.exc_text}"
-
-        color = self.COLORS.get(record.levelno, "")
-        base = (
-            f"{color}%(asctime)s | %(levelname)-8s | %(name)s | %(message)s{self.RESET}"
-        )
-
-        return logging.Formatter(base, datefmt="%H:%M:%S").format(record)
+        return formatter.format(record)
