@@ -106,16 +106,16 @@ class ModelTrainer:
             vy_pred = self.model(vbatch_x)
             vloss = self.criterion(vy_pred, vbatch_y)
 
-            running_vloss += vloss.item()
+            running_vloss += vloss.item() * vbatch_y.size(0)
 
             # convert logits to predictions
             predictions = torch.argmax(vy_pred, dim=1)
             batchs_predictions.extend(predictions.detach().cpu().numpy())
             batchs_labels.extend(vbatch_y.cpu().numpy())
 
-        avg_loss_v = running_vloss / len(self.val_loader)
+        avg_loss_v = running_vloss / len(self.val_loader.dataset)  # type: ignore
         metrics = evals(np.array(batchs_labels), np.array(batchs_predictions))
-        return avg_loss_v, metrics
+        return avg_loss_v, metrics  # type: ignore
 
     def _save_weights(self, weights_path: Path, is_best: bool = False) -> Path:
         """Saves current model weights (state dict) to the specified path.
