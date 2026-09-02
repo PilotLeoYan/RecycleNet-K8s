@@ -35,13 +35,23 @@ class DataIngestion:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         with zipfile.ZipFile(self.config.zip_source, "r") as zip_file:
-            zip_file.extractall(output_dir)
-
+            for member in zip_file.infolist():
+                filename = member.filename
+                # Skip macOS metadata folders and AppleDouble / hidden files
+                if (
+                    filename.startswith("__MACOSX")
+                    or "/__MACOSX" in filename
+                    or Path(filename).name.startswith("._")
+                    or Path(filename).name == ".DS_Store"
+                ):
+                    continue
+                zip_file.extract(member, output_dir)
         # Dynamically detect if dataset was extracted into a single wrapper directory
         subdirs = [
-            p for p in output_dir.iterdir() if p.is_dir() and not p.name.startswith(".")
+            p
+            for p in output_dir.iterdir()
+            if p.is_dir() and not p.name.startswith(".") and p.name != "__MACOSX"
         ]
         if len(subdirs) == 1 and any(p.is_dir() for p in subdirs[0].iterdir()):
             return subdirs[0]
-
         return output_dir
