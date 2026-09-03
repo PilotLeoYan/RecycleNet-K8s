@@ -75,6 +75,9 @@ pythonpath = ["."]
 
 [tool.uv]
 package = false
+override-dependencies = [
+    "cryptography>=50.0.0",
+]
 
 [tool.bandit]
 # Folders to Exclude During Security Scans
