@@ -146,7 +146,9 @@ class ModelTrainer:
         Args:
             best_path: Filepath of the best weights checkpoint.
         """
-        self.model.load_state_dict(torch.load(best_path, map_location=self.device))
+        self.model.load_state_dict(
+            torch.load(best_path, map_location=self.device, weights_only=True)
+        )
         self.model.eval()
 
         dummy_input = torch.randn(1, *self.val_loader.dataset[0][0].shape).to(
