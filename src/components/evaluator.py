@@ -59,7 +59,7 @@ class Evaluator:
                 labels, predicted probabilities, and ground truth labels.
         """
         self.model.load_state_dict(
-            torch.load(self.weights_path, map_location=self.device)
+            torch.load(self.weights_path, map_location=self.device, weights_only=True)
         )
         self.model.eval()
 

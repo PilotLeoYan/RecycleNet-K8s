@@ -1,4 +1,4 @@
-name: CI - Quality & Tests
+name: CI - Quality, Security & Tests
 
 on:
   pull_request:
@@ -22,8 +22,8 @@ permissions:
   contents: read
 
 jobs:
-  quality:
-    name: Code Quality & Type Check
+  pipeline:
+    name: Lint, Security & Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -42,34 +42,20 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --all-groups
 
-      - name: Check code formatting (Ruff)
+      - name: Check formatting (Ruff)
         run: uv run ruff format --check .
 
-      - name: Run linter (Ruff)
+      - name: Lint code (Ruff)
         run: uv run ruff check .
 
-      - name: Run static type checks (Mypy)
+      - name: Type check (Mypy)
         run: uv run mypy .
 
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
+      - name: Run Bandit (Security Linter)
+        run: uvx bandit -r src/ -c pyproject.toml
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python
-        run: uv python install
-
-      - name: Install dependencies
-        run: uv sync --frozen --all-groups
+      - name: Audit dependencies (CVEs)
+        run: uv audit
 
       - name: Run unit tests (Pytest)
         run: uv run pytest tests/ -v --durations=10
