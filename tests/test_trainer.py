@@ -91,6 +91,6 @@ def test_trainer_fit(tmp_path: Path) -> None:
     )
 
     weights_dir = tmp_path / "weights"
-    saved_path = trainer.fit(epochs=2, weights_path=str(weights_dir), patience=2)
+    saved_path = trainer.fit(0, epochs=2, weights_path=str(weights_dir), patience=2)
 
     assert saved_path.exists()

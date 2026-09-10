@@ -1,6 +1,5 @@
 """Training loop execution, validation monitoring, early stopping, and checkpointing."""
 
-from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -117,7 +116,9 @@ class ModelTrainer:
         metrics = evals(np.array(batchs_labels), np.array(batchs_predictions))
         return avg_loss_v, metrics  # type: ignore
 
-    def _save_weights(self, weights_path: Path, is_best: bool = False) -> Path:
+    def _save_weights(
+        self, run_id: str | int, weights_path: Path, is_best: bool = False
+    ) -> Path:
         """Saves current model weights (state dict) to the specified path.
 
         Args:
@@ -128,9 +129,9 @@ class ModelTrainer:
             Path: Full filepath of the saved .pth weights checkpoint.
         """
         if is_best:
-            path = weights_path / Path(f"best-{date.today()}.pth")
+            path = weights_path / Path(f"best-{run_id}.pth")
         else:
-            path = weights_path / Path(f"{date.today()}.pth")
+            path = weights_path / Path(f"{run_id}.pth")
 
         weights_path.mkdir(parents=True, exist_ok=True)
 
@@ -163,10 +164,13 @@ class ModelTrainer:
             self.model,
         )
 
-    def fit(self, epochs: int, weights_path: str, patience: int = 3) -> Path:
+    def fit(
+        self, run_id: int | str, epochs: int, weights_path: str, patience: int = 3
+    ) -> Path:
         """Runs the complete training and validation cycle with early stopping.
 
         Args:
+            run_id: MLflow tracking ID.
             epochs: Maximum number of training epochs to execute.
             weights_path: Destination directory string to save checkpoints.
             patience: Number of epochs without improvement before early stopping.
@@ -196,7 +200,7 @@ class ModelTrainer:
                 new_best = True
                 best_loss = valid_loss
                 epochs_no_improve = 0
-                best_path = self._save_weights(path, True)
+                best_path = self._save_weights(run_id, path, True)
 
             logger.info(
                 "epoch: %i, loss: %.4f, v_loss: %.4f%s",
@@ -214,7 +218,7 @@ class ModelTrainer:
                 break
 
         if best_path is None:
-            best_path = self._save_weights(path, False)
+            best_path = self._save_weights(run_id, path, False)
 
         if best_path.exists():
             self._registry_model(best_path)
