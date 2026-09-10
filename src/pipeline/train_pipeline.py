@@ -171,6 +171,7 @@ class TrainPipeline:
 
                 with tempfile.TemporaryDirectory() as temp_dir:
                     best_path = trainer.fit(
+                        run_id=active_run.info.run_id,
                         epochs=self.config.training.epochs,
                         weights_path=temp_dir,
                         patience=self.config.training.patience,
