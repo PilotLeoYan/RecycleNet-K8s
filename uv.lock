@@ -2559,8 +2559,6 @@ name = "recyclenet-k8s"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "graphene" },
-    { name = "graphql-core" },
     { name = "matplotlib" },
     { name = "mlflow" },
     { name = "numpy" },
@@ -2588,8 +2586,6 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "graphene", specifier = ">=3.0" },
-    { name = "graphql-core", specifier = ">=3.2.0" },
     { name = "matplotlib", specifier = ">=3.11.1,<4.0.0" },
     { name = "mlflow", specifier = ">=3.16.0,<4.0.0" },
     { name = "numpy", specifier = ">=2.5.2,<3.0.0" },
