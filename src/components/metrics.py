@@ -68,7 +68,7 @@ def calculate_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
                 labels=np.arange(num_classes),
             )
         )
-    except ValueError, IndexError:
+    except (ValueError, IndexError):
         return 0.0
 
 

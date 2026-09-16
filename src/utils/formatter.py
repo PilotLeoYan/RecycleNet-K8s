@@ -3,7 +3,8 @@
 import json
 import logging
 from datetime import UTC, datetime
-from typing import override
+
+from typing_extensions import override
 
 _LEVEL_TO_GCP_SEVERITY = {
     logging.DEBUG: "DEBUG",
