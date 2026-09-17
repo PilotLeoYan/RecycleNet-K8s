@@ -39,6 +39,7 @@ dev = [
     "pytest (>=9.1.1,<10.0.0)",
     "types-pyyaml>=6.0.12.20260815",
     "ipykernel>=7.3.0",
+    "pillow>=12.3.0",
 ]
 docs = [
     "mkdocs>=1.6.1",
