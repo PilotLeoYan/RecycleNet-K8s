@@ -2,11 +2,13 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import mlflow
+import mlflow.pytorch
 import numpy as np
 import pytest
 from torch import nn
 
 from src.components.log_model import LogModel
+from src.config.schema import TrackingConfig
 
 
 def test_log_model_no_active_run() -> None:
@@ -75,3 +77,60 @@ def test_log_epoch_with_active_run(
             },
             fig_cm=fig,
         )
+
+
+def test_log_model_registered_model_name_from_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def mock_log_model(**kwargs: object) -> None:
+        captured_kwargs.update(kwargs)
+
+    info_obj = type("MockInfo", (), {"run_id": "123"})()
+    mock_run = type("MockRun", (), {"info": info_obj})()
+    monkeypatch.setattr(mlflow, "active_run", lambda: mock_run)
+    monkeypatch.setattr(mlflow.pytorch, "log_model", mock_log_model)
+
+    config = TrackingConfig(registered_model_name="CustomRecycleNet")
+    logger = LogModel(config=config)
+
+    assert logger.config.registered_model_name == "CustomRecycleNet"
+
+    dummy_input = np.random.randn(1, 3, 32, 32).astype(np.float32)
+    dummy_output = np.random.randn(1, 2).astype(np.float32)
+    model = nn.Linear(32, 2)
+
+    logger.log_model(dummy_input, dummy_output, model)
+    assert captured_kwargs.get("registered_model_name") == "CustomRecycleNet"
+
+
+def test_log_model_registered_model_name_dynamic_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def mock_log_model(**kwargs: object) -> None:
+        captured_kwargs.update(kwargs)
+
+    info_obj = type("MockInfo", (), {"run_id": "123"})()
+    mock_run = type("MockRun", (), {"info": info_obj})()
+    monkeypatch.setattr(mlflow, "active_run", lambda: mock_run)
+    monkeypatch.setattr(mlflow.pytorch, "log_model", mock_log_model)
+
+    config = TrackingConfig(registered_model_name="BaseModelName")
+    logger = LogModel(config=config)
+
+    dummy_input = np.random.randn(1, 3, 32, 32).astype(np.float32)
+    dummy_output = np.random.randn(1, 2).astype(np.float32)
+    model = nn.Linear(32, 2)
+
+    logger.log_model(
+        dummy_input, dummy_output, model, registered_model_name="DynamicOverrideModel"
+    )
+    assert captured_kwargs.get("registered_model_name") == "DynamicOverrideModel"
+
+
+def test_log_model_init_override() -> None:
+    logger = LogModel(registered_model_name="DirectOverride")
+    assert logger.config.registered_model_name == "DirectOverride"
