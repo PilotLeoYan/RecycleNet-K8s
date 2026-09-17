@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 
 from src.components.log_model import LogModel
 from src.components.metrics import evals
+from src.config.schema import TrackingConfig
 from src.utils import get_logger
 
 logger = get_logger(__name__)
@@ -38,6 +39,7 @@ class ModelTrainer:
         criterion: nn.Module,
         optimizer: Optimizer,
         device: torch.device | str,
+        tracking_config: TrackingConfig | None = None,
     ):
         """Initializes ModelTrainer with training dependencies and target device.
 
@@ -48,6 +50,7 @@ class ModelTrainer:
             criterion: Loss function module (e.g. CrossEntropyLoss).
             optimizer: Optimizer instance (e.g. AdamW).
             device: Target torch device or device string ('cuda', 'cpu').
+            tracking_config: Optional tracking configuration for MLflow logging.
         """
         self.model = model
         self.train_loader = train_loader
@@ -56,7 +59,7 @@ class ModelTrainer:
         self.optimizer = optimizer
         self.device = torch.device(device) if isinstance(device, str) else device
 
-        self.log_model: LogModel = LogModel()
+        self.log_model: LogModel = LogModel(config=tracking_config)
         self.model.to(self.device)
 
     def _train_step(self) -> float:

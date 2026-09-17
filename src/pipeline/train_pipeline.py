@@ -107,6 +107,7 @@ class TrainPipeline:
                 criterion=criterion,
                 optimizer=optimizer,
                 device=self.config.training.device,
+                tracking_config=self.config.tracking,
             )
         except Exception as e:
             raise RecycleNetException("Error initialising the trainer", e) from e

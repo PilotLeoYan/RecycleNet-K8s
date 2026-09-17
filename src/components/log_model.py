@@ -7,13 +7,31 @@ import numpy as np
 from matplotlib import pyplot as plt
 from mlflow.models import infer_signature
 
+from src.config.schema import TrackingConfig
+
 
 class LogModel:
-    """Handles communication with MLflow for run tracking and model registry."""
+    """Handles communication with MLflow for run tracking and model registry.
 
-    def __init__(self) -> None:
-        """Initializes the LogModel tracking helper."""
-        pass
+    Attributes:
+        config: Tracking configuration settings for MLflow.
+    """
+
+    def __init__(
+        self,
+        config: TrackingConfig | None = None,
+        registered_model_name: str | None = None,
+    ) -> None:
+        """Initializes the LogModel tracking helper.
+
+        Args:
+            config: MLflow tracking configuration settings. If None, default
+                TrackingConfig is used.
+            registered_model_name: Optional override for the registered model name.
+        """
+        self.config = config.model_copy() if config is not None else TrackingConfig()
+        if registered_model_name is not None:
+            self.config.registered_model_name = registered_model_name
 
     def log_epoch(
         self,
@@ -76,7 +94,11 @@ class LogModel:
         plt.close(fig_cm)  # close figures to avoid memory accumulation
 
     def log_model(
-        self, dummy_input: np.ndarray, dummy_output: np.ndarray, model: Any
+        self,
+        dummy_input: np.ndarray,
+        dummy_output: np.ndarray,
+        model: Any,
+        registered_model_name: str | None = None,
     ) -> None:
         """Logs and registers the trained PyTorch model with schema signature.
 
@@ -84,6 +106,7 @@ class LogModel:
             dummy_input: Sample input array for schema signature inference.
             dummy_output: Corresponding model output array for schema inference.
             model: Trained PyTorch model instance to log.
+            registered_model_name: Optional override for the registered model name.
         """
         if not mlflow.active_run():
             return
@@ -91,6 +114,11 @@ class LogModel:
         signature = infer_signature(dummy_input, dummy_output)
 
         cpu_model = model.to("cpu") if hasattr(model, "to") else model
+        target_model_name = (
+            registered_model_name
+            if registered_model_name is not None
+            else self.config.registered_model_name
+        )
 
         mlflow.pytorch.log_model(
             pytorch_model=cpu_model,
@@ -98,7 +126,7 @@ class LogModel:
             signature=signature,
             input_example=dummy_input,
             serialization_format="pickle",
-            registered_model_name="RecycleNet",
+            registered_model_name=target_model_name,
             pip_requirements=[
                 "torch",
                 "torchvision",
