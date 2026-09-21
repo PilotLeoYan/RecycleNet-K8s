@@ -79,6 +79,14 @@ class TrainPipeline:
                 "Error creating DataLoaders or splitting data", e
             ) from e
 
+        detected_num_classes = len(self.transformation.classes)
+        if detected_num_classes != self.config.training.num_classes:
+            raise RecycleNetException(
+                f"Dataset class count mismatch: detected {detected_num_classes} classes "
+                f"({self.transformation.classes}), but training.num_classes is configured to "
+                f"{self.config.training.num_classes}."
+            )
+
         try:
             logger.info("Building the MobileNetV3 model...")
             model = build_mobilenet_v3(self.config.training.num_classes)
@@ -88,7 +96,7 @@ class TrainPipeline:
         try:
             criterion = get_criterion()
         except Exception as e:
-            raise RecycleNetException("Error initialising the criterio", e) from e
+            raise RecycleNetException("Error initialising the criterion", e) from e
 
         try:
             optimizer = get_optimizer(
