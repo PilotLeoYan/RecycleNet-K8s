@@ -43,16 +43,16 @@ class TransformationConfig(BaseModel):
     random_h_flip: float = Field(default=0.5, ge=0.0, le=1.0)
     random_rotation: tuple[int, int] | int = (-90, 90)
     # Data split
-    train_split: float = 0.7
-    eval_split: float = 0.15
-    test_split: float = 0.15
+    train_split: float = Field(default=0.7, gt=0.0, lt=1.0)
+    eval_split: float = Field(default=0.15, gt=0.0, lt=1.0)
+    test_split: float = Field(default=0.15, gt=0.0, lt=1.0)
     # Data Loader
     batch_size: int = Field(default=32, gt=0)
-    num_workers: int = 4
+    num_workers: int = Field(default=4, ge=0)
     pin_memory: bool = True
 
     @model_validator(mode="after")
-    def validate_splits(self) -> TransformationConfig:
+    def validate_splits(self) -> "TransformationConfig":
         """Ensures train, validation, and test splits sum up to 1.0."""
         total = self.train_split + self.eval_split + self.test_split
         if not abs(total - 1.0) < 1e-5:
@@ -86,11 +86,11 @@ class TrainingConfig(BaseModel):
         device: Device identifier string ('cuda' or 'cpu').
     """
 
-    num_classes: int = 6
+    num_classes: int = Field(default=6, ge=1)
     epochs: int = Field(default=10, ge=1)
     patience: int = Field(default=3, ge=1)
     learning_rate: float = Field(default=1e-3, gt=0)
-    weight_decay: float = Field(default=1e-4, gt=0)
+    weight_decay: float = Field(default=1e-4, ge=0.0)
     device: str = "cuda"
 
 
@@ -120,13 +120,18 @@ class AppConfig(BaseSettings):
     )
 
     @classmethod
-    def from_yaml(cls, yaml_path: Path | str) -> AppConfig:
+    def from_yaml(cls, yaml_path: Path | str) -> "AppConfig":
         """Loads configuration from a YAML file."""
         path = Path(yaml_path)
         if not path.exists():
             raise FileNotFoundError(f"Configuration file not found: {path}")
 
         with open(path, encoding="utf-8") as f:
-            data: dict[str, Any] = yaml.safe_load(f) or {}
+            data: Any = yaml.safe_load(f)
+
+        if not isinstance(data, dict):
+            raise ValueError(
+                f"Configuration YAML at {path} must define a mapping, got {type(data).__name__}"
+            )
 
         return cls(**data)
