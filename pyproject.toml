@@ -75,6 +75,7 @@ pythonpath = ["."]
 package = false
 override-dependencies = [
     "cryptography>=50.0.0",
+    "gitpython>=3.1.60",
 ]
 
 [tool.bandit]
