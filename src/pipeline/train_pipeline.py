@@ -74,22 +74,19 @@ class TrainPipeline:
             train_loader, valid_loader, test_loader = (
                 self.transformation.get_dataloaders(raw_path)
             )
+            logger.info(
+                "Detected [%i] classes: %s",
+                len(self.transformation.classes),
+                self.transformation.classes,
+            )
         except Exception as e:
             raise RecycleNetException(
                 "Error creating DataLoaders or splitting data", e
             ) from e
 
-        detected_num_classes = len(self.transformation.classes)
-        if detected_num_classes != self.config.training.num_classes:
-            raise RecycleNetException(
-                f"Dataset class count mismatch: detected {detected_num_classes} classes "
-                f"({self.transformation.classes}), but training.num_classes is configured to "
-                f"{self.config.training.num_classes}."
-            )
-
         try:
             logger.info("Building the MobileNetV3 model...")
-            model = build_mobilenet_v3(self.config.training.num_classes)
+            model = build_mobilenet_v3(len(self.transformation.classes))
         except Exception as e:
             raise RecycleNetException("Error initialising the model", e) from e
 
@@ -156,7 +153,7 @@ class TrainPipeline:
                         "seed_torch": self.config.reproducibility.torch_seed,
                         # Model
                         "model_architecture": "mobilenet_v3_small",
-                        "num_classes": self.config.training.num_classes,
+                        "num_classes": len(self.transformation.classes),
                         "freeze_base": True,
                         # Optimizer & Loss
                         "optimizer": optimizer.__class__.__name__,
