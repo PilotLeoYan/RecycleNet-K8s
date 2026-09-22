@@ -78,7 +78,6 @@ class TrainingConfig(BaseModel):
     """Configuration options for the training pipeline run.
 
     Attributes:
-        num_classes: Number of distinct classification categories.
         epochs: Number of complete passes over the training dataset.
         patience: Epoch patience threshold for early stopping.
         learning_rate: Learning Rate (LR), Alpha, or Learning Step.
@@ -86,7 +85,6 @@ class TrainingConfig(BaseModel):
         device: Device identifier string ('cuda' or 'cpu').
     """
 
-    num_classes: int = 6
     epochs: int = Field(default=10, ge=1)
     patience: int = Field(default=3, ge=1)
     learning_rate: float = Field(default=1e-3, gt=0)
