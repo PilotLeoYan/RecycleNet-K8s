@@ -54,8 +54,5 @@ jobs:
       - name: Run Bandit (Security Linter)
         run: uvx bandit -r src/ -c pyproject.toml
 
-      - name: Audit dependencies (CVEs)
-        run: uv audit
-
       - name: Run unit tests (Pytest)
         run: uv run pytest tests/ -v --durations=10

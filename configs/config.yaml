@@ -21,7 +21,6 @@ reproducibility:
   torch_seed: 42
 
 training:
-  num_classes: 6
   epochs: 1
   patience: 3
   learning_rate: 0.001

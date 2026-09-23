@@ -52,7 +52,7 @@ class TransformationConfig(BaseModel):
     pin_memory: bool = True
 
     @model_validator(mode="after")
-    def validate_splits(self) -> "TransformationConfig":
+    def validate_splits(self) -> TransformationConfig:
         """Ensures train, validation, and test splits sum up to 1.0."""
         total = self.train_split + self.eval_split + self.test_split
         if not abs(total - 1.0) < 1e-5:
@@ -78,7 +78,6 @@ class TrainingConfig(BaseModel):
     """Configuration options for the training pipeline run.
 
     Attributes:
-        num_classes: Number of distinct classification categories.
         epochs: Number of complete passes over the training dataset.
         patience: Epoch patience threshold for early stopping.
         learning_rate: Learning Rate (LR), Alpha, or Learning Step.
@@ -86,7 +85,6 @@ class TrainingConfig(BaseModel):
         device: Device identifier string ('cuda' or 'cpu').
     """
 
-    num_classes: int = Field(default=6, ge=1)
     epochs: int = Field(default=10, ge=1)
     patience: int = Field(default=3, ge=1)
     learning_rate: float = Field(default=1e-3, gt=0)
@@ -120,7 +118,7 @@ class AppConfig(BaseSettings):
     )
 
     @classmethod
-    def from_yaml(cls, yaml_path: Path | str) -> "AppConfig":
+    def from_yaml(cls, yaml_path: Path | str) -> AppConfig:
         """Loads configuration from a YAML file."""
         path = Path(yaml_path)
         if not path.exists():
@@ -131,7 +129,8 @@ class AppConfig(BaseSettings):
 
         if not isinstance(data, dict):
             raise ValueError(
-                f"Configuration YAML at {path} must define a mapping, got {type(data).__name__}"
+                f"Configuration YAML at {path} must define a mapping, "
+                "got {type(data).__name__}"
             )
 
         return cls(**data)
