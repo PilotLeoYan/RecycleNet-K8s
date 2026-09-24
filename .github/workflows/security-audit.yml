@@ -1,0 +1,36 @@
+name: Scheduled Security Audit
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-dependency:
+    name: Daily Dependency CVE Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      # We don't need 'uv python install' ni 'uv sync',
+      # we only need to check the Static dependency graph,
+      # so instead install all dependencies, we only need to analyse uv.lock
+      #- name: Set up Python
+      #  run: uv python install
+
+      #- name: Install dependencies
+      #  run: uv sync --frozen --all-groups
+
+      - name: Audit dependencies for known CVEs
+        run: uv audit --frozen
