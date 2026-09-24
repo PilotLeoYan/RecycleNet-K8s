@@ -49,13 +49,13 @@ class JSONFormatter(logging.Formatter):
             if key in _RESERVED_RECORD_KEYS or key in payload:
                 continue
 
-            try:
-                json.dumps(value)
-                payload[key] = value
-            except TypeError:
-                payload[key] = str(value)
+            payload[key] = value
 
-        return json.dumps(payload, default=str)
+        try:
+            return json.dumps(payload, default=str)
+        except TypeError, ValueError:
+            sanitized = {k: str(v) for k, v in payload.items()}
+            return json.dumps(sanitized)
 
 
 class LocalFormatter(logging.Formatter):
