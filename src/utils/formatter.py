@@ -53,7 +53,7 @@ class JSONFormatter(logging.Formatter):
 
         try:
             return json.dumps(payload, default=str)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             sanitized = {k: str(v) for k, v in payload.items()}
             return json.dumps(sanitized)
 

@@ -17,6 +17,7 @@ def main() -> None:
     try:
         config_path = Path("configs/config.yaml")
         config = AppConfig.from_yaml(config_path)
+        logger.debug("configuration: %s", config.__str__())
 
         pipeline = TrainPipeline(config)
         pipeline.run()

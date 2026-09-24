@@ -17,6 +17,11 @@ class IngestionConfig(BaseModel):
     zip_source: Path
     raw_output_dir: Path = Path("data/raw")  # default value
 
+    def __str__(self) -> str:
+        return f"""IngestionConfig:
+  zip_source: {self.zip_source}
+  raw_output_dir: {self.raw_output_dir}"""
+
 
 class TransformationConfig(BaseModel):
     """Configuration parameters for dataset transformations and DataLoader setup.
@@ -59,6 +64,20 @@ class TransformationConfig(BaseModel):
             raise ValueError(f"Splits must sum to 1.0, got: {total}")
         return self
 
+    def __str__(self) -> str:
+        return f"""TransformationConfig:
+  image_size: {self.image_size}
+  image_mean: {self.image_mean}
+  image_std: {self.image_std}
+  random_h_flip: {self.random_h_flip}
+  random_rotation: {self.random_rotation}
+  train_split: {self.train_split}
+  eval_split: {self.eval_split}
+  test_split: {self.test_split}
+  batch_size: {self.batch_size}
+  num_workers: {self.num_workers}
+  pin_memory: {self.pin_memory}"""
+
 
 class ReproducibilityConfig(BaseModel):
     """Random seed configuration settings for environment reproducibility.
@@ -72,6 +91,12 @@ class ReproducibilityConfig(BaseModel):
     random_seed: int = 42
     numpy_seed: int = 42
     torch_seed: int = 42
+
+    def __str__(self) -> str:
+        return f"""ReproducibilityConfig:
+  random_seed: {self.random_seed}
+  numpy_seed: {self.numpy_seed}
+  torch_seed: {self.torch_seed}"""
 
 
 class TrainingConfig(BaseModel):
@@ -91,6 +116,14 @@ class TrainingConfig(BaseModel):
     weight_decay: float = Field(default=1e-4, ge=0.0)
     device: str = "cuda"
 
+    def __str__(self) -> str:
+        return f"""TrainingConfig:
+  epochs: {self.epochs}
+  patience: {self.patience}
+  learning_rate: {self.learning_rate}
+  weight_decay: {self.weight_decay}
+  device: {self.device}"""
+
 
 class TrackingConfig(BaseModel):
     """Configuration for MLflow tracking"""
@@ -98,6 +131,12 @@ class TrackingConfig(BaseModel):
     experiment_name: str = "RecycleNet_Training"
     registered_model_name: str = "RecycleNet"
     tracking_uri: str = "sqlite:///mlflow.db"
+
+    def __str__(self) -> str:
+        return f"""TrackingConfig
+  experiment_name: {self.experiment_name}
+  registered_model_name: {self.registered_model_name}
+  tracking_uri: {self.tracking_uri}"""
 
 
 class AppConfig(BaseSettings):
@@ -134,3 +173,11 @@ class AppConfig(BaseSettings):
             )
 
         return cls(**data)
+
+    def __str__(self) -> str:
+        return f"""AppConfig:
+{self.ingestion.__str__()}
+{self.transformation.__str__()}
+{self.reproducibility.__str__()}
+{self.training.__str__()}
+{self.tracking.__str__()}"""
