@@ -1,5 +1,6 @@
 from .schema import (
     AppConfig,
+    HPOConfig,
     IngestionConfig,
     ReproducibilityConfig,
     TrackingConfig,
@@ -14,4 +15,5 @@ __all__ = [
     "TrainingConfig",
     "TrackingConfig",
     "AppConfig",
+    "HPOConfig",
 ]

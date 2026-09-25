@@ -139,6 +139,26 @@ class TrackingConfig(BaseModel):
   tracking_uri: {self.tracking_uri}"""
 
 
+class HPOConfig(BaseModel):
+    """Configuration for Hyperparameters Optimization"""
+
+    # loguniform(1e-4, 1e-1)
+    weight_decay_range: tuple[float, float] = Field(default=(1e-4, 1e-1))
+    # loguniform(1e-4, 1e-1)
+    learning_rate_range: tuple[float, float] = Field(default=(1e-4, 1e-1))
+    batch_size: list[int] = Field(default=[8, 16, 32])
+    num_samples: int = Field(default=2, gt=0)
+    max_epochs: int = Field(default=4, gt=0)
+    grace_period: int = Field(default=2, gt=0)
+    reduction_factor: int = Field(default=2, ge=2)
+    dataloader_n_workers: int = Field(default=4, ge=1)
+    max_concurrent_trials: int = Field(default=2, ge=1)
+    cpu_resources_per_trial: float = Field(default=2.0, ge=1.0)
+    gpu_resources_per_trial: float = Field(default=0.5, ge=0.0)
+    device: str = Field(default="cpu")
+    experiment_name: str = Field(default="hpo_mobilenetv3_experiment")
+
+
 class AppConfig(BaseSettings):
     """Root application configuration"""
 
@@ -149,6 +169,7 @@ class AppConfig(BaseSettings):
     )
     training: TrainingConfig
     tracking: TrackingConfig = Field(default_factory=TrackingConfig)
+    hpo: HPOConfig = Field(default_factory=HPOConfig)
 
     model_config = SettingsConfigDict(
         env_prefix="RECYCLENET_",

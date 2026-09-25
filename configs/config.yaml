@@ -31,3 +31,18 @@ tracking:
   experiment_name: "RecycleNet_Training"
   registered_model_name: "RecycleNet"
   tracking_uri: "sqlite:///mlflow.db"
+
+hpo:
+  weight_decay_range: [1e-4, 1e-1] # loguniform(1e-4, 1e-1)
+  learning_rate_range: [1e-4, 1e-1] # loguniform(1e-4, 1e-1)
+  batch_size: [8, 16, 32]
+  num_samples: 2
+  max_epochs: 4
+  grace_period: 2
+  reduction_factor: 2
+  dataloader_n_workers: 4
+  max_concurrent_trials: 2
+  cpu_resources_per_trial: 2
+  gpu_resources_per_trial: 0.5
+  device: "cuda"
+  experiment_name: "hpo_mobilenetv3_experiment"
