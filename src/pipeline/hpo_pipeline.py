@@ -4,6 +4,7 @@ from typing import Any
 from ray import tune
 from ray.air.integrations.mlflow import MLflowLoggerCallback
 from ray.tune.schedulers import ASHAScheduler
+from ray.tune.search.optuna import OptunaSearch
 
 from src.components import DataIngestion, DataTransformation, ModelTrainer
 from src.components.loss_functions import get_criterion
@@ -81,6 +82,7 @@ class HPOPipeline:
                 self.config.hpo.weight_decay_range[1],
             ),
             "batch_size": tune.choice(self.config.hpo.batch_size),
+            # fixed hyperparameters
             "max_epochs": self.config.hpo.max_epochs,
             "grace_period": self.config.hpo.grace_period,
             "dataloader_n_workers": self.config.hpo.dataloader_n_workers,
@@ -111,8 +113,14 @@ class HPOPipeline:
             mode="min",
         )
 
+        search_alg = OptunaSearch(
+            metric="val_loss",
+            mode="min",
+        )
+
         tune_config = tune.TuneConfig(
             scheduler=scheduler,
+            search_alg=search_alg,
             num_samples=self.config.hpo.num_samples,
             max_concurrent_trials=self.config.hpo.max_concurrent_trials,
         )
