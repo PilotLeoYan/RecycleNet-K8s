@@ -6,10 +6,13 @@ import random
 import numpy as np
 import torch
 
+from src.components.data_transform import seed_worker
 from src.config.schema import ReproducibilityConfig
 from src.utils import get_logger
 
 logger = get_logger(__name__)
+
+__all__ = ["make_reproducibility", "seed_worker"]
 
 
 def make_reproducibility(config: ReproducibilityConfig) -> None:

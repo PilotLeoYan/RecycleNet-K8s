@@ -55,6 +55,7 @@ class TransformationConfig(BaseModel):
     batch_size: int = Field(default=32, gt=0)
     num_workers: int = Field(default=4, ge=0)
     pin_memory: bool = True
+    seed: int | None = None
 
     @model_validator(mode="after")
     def validate_splits(self) -> TransformationConfig:
@@ -76,7 +77,8 @@ class TransformationConfig(BaseModel):
   test_split: {self.test_split}
   batch_size: {self.batch_size}
   num_workers: {self.num_workers}
-  pin_memory: {self.pin_memory}"""
+  pin_memory: {self.pin_memory}
+  seed: {self.seed}"""
 
 
 class ReproducibilityConfig(BaseModel):

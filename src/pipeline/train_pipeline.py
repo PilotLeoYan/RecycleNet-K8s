@@ -38,10 +38,11 @@ class TrainPipeline:
             config: Training pipeline configuration settings.
         """
         self.config = config
-        self.ingestion = DataIngestion(config.ingestion)
-        self.transformation = DataTransformation(config.transformation)
-
         make_reproducibility(config.reproducibility)
+        self.ingestion = DataIngestion(config.ingestion)
+        self.transformation = DataTransformation(
+            config.transformation, seed=config.reproducibility.torch_seed
+        )
 
     def run(self) -> None:
         """Executes the full end-to-end training and evaluation workflow.
