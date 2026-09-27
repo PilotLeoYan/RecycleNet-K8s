@@ -13,9 +13,8 @@ from src.components.model import build_mobilenet_v3
 from src.components.optimizers import get_optimizer
 from src.components.trainer import ModelTrainer
 from src.config.schema import AppConfig
-from src.exception import RecycleNetException
 from src.pipeline.reproducibility import make_reproducibility
-from src.utils import get_logger
+from src.utils import RecycleNetException, get_logger
 
 logger = get_logger(__name__)
 
@@ -196,3 +195,5 @@ class TrainPipeline:
                 raise RecycleNetException(
                     "Failure during the training or assessment cycle", e
                 ) from e
+
+        logger.info("Pipeline successfully completed")

@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+import torch
 from ray import tune
 from ray.air.integrations.mlflow import MLflowLoggerCallback
 from ray.tune.schedulers import ASHAScheduler
@@ -11,6 +12,10 @@ from src.components.loss_functions import get_criterion
 from src.components.model import build_mobilenet_v3
 from src.components.optimizers import get_optimizer
 from src.config import AppConfig, TransformationConfig
+from src.pipeline.reproducibility import make_reproducibility
+from src.utils import RecycleNetException, get_logger
+
+logger = get_logger(__name__)
 
 
 def train_eval_trial(
@@ -52,7 +57,7 @@ def train_eval_trial(
         tracking_config=None,
     )
 
-    for epoch in range(config["max_epochs"]):
+    for _ in range(config["max_epochs"]):
         loss = trainer._train_step()
         vloss, metrics = trainer._valid_step()
         tune.report(
@@ -63,100 +68,131 @@ def train_eval_trial(
             }
         )
 
+    del trainer, model, train_loader, valid_loader, criterion, optimizer
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    import gc
+
+    gc.collect()
+
 
 class HPOPipeline:
     def __init__(
         self,
         config: AppConfig,
     ) -> None:
+        """Initializes the HPO pipeline with configuration and deterministic seed.
+
+        Args:
+            config: Root application configuration.
+        """
         self.config = config
+        make_reproducibility(self.config.reproducibility)
 
     def run(self) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-        param_space = {
-            "learning_rate": tune.loguniform(
-                self.config.hpo.learning_rate_range[0],
-                self.config.hpo.learning_rate_range[1],
-            ),
-            "weight_decay": tune.loguniform(
-                self.config.hpo.weight_decay_range[0],
-                self.config.hpo.weight_decay_range[1],
-            ),
-            "batch_size": tune.choice(self.config.hpo.batch_size),
-            # fixed hyperparameters
-            "max_epochs": self.config.hpo.max_epochs,
-            "grace_period": self.config.hpo.grace_period,
-            "dataloader_n_workers": self.config.hpo.dataloader_n_workers,
-            "device": self.config.hpo.device,
-        }
+        """Executes the Ray Tune search across worker resources.
 
-        ingestion = DataIngestion(self.config.ingestion)
-        # Plasma Store
-        tuner_parameters = tune.with_parameters(
-            train_eval_trial,
-            data_dir=ingestion.extract_dataset().resolve(),
-            app_config=self.config,
-        )
+        Returns:
+            tuple[dict[str, Any] | None, dict[str, Any] | None]: Best trial
+                hyperparameter configuration and corresponding evaluation metrics.
 
-        tuner_resourcers = tune.with_resources(
-            tuner_parameters,
-            resources={
-                "cpu": self.config.hpo.cpu_resources_per_trial,
-                "gpu": self.config.hpo.gpu_resources_per_trial,
-            },
-        )
+        Raises:
+            RecycleNetException: if Ray Tune encouters a fatal execution failure.
+        """
+        logger.info("Initializing Ray Tune HPO pipeline...")
 
-        scheduler = ASHAScheduler(
-            max_t=self.config.hpo.max_epochs,
-            grace_period=self.config.hpo.grace_period,
-            reduction_factor=self.config.hpo.reduction_factor,
-            metric="val_loss",
-            mode="min",
-        )
+        try:
+            param_space = {
+                "learning_rate": tune.loguniform(
+                    self.config.hpo.learning_rate_range[0],
+                    self.config.hpo.learning_rate_range[1],
+                ),
+                "weight_decay": tune.loguniform(
+                    self.config.hpo.weight_decay_range[0],
+                    self.config.hpo.weight_decay_range[1],
+                ),
+                "batch_size": tune.choice(self.config.hpo.batch_size),
+                # Fixed trial execution parameters
+                "max_epochs": self.config.hpo.max_epochs,
+                "grace_period": self.config.hpo.grace_period,
+                "dataloader_n_workers": self.config.hpo.dataloader_n_workers,
+                "device": self.config.hpo.device,
+            }
 
-        search_alg = OptunaSearch(
-            metric="val_loss",
-            mode="min",
-        )
+            ingestion = DataIngestion(self.config.ingestion)
+            dataset_dir = ingestion.extract_dataset().resolve()
+            logger.info("Dataset extracted at: %s", dataset_dir)
 
-        tune_config = tune.TuneConfig(
-            scheduler=scheduler,
-            search_alg=search_alg,
-            num_samples=self.config.hpo.num_samples,
-            max_concurrent_trials=self.config.hpo.max_concurrent_trials,
-        )
+            # Plasma Store
+            tuner_parameters = tune.with_parameters(
+                train_eval_trial,
+                data_dir=dataset_dir,
+                app_config=self.config,
+            )
 
-        run_config = tune.RunConfig(
-            name=self.config.hpo.experiment_name,
-            callbacks=[
-                MLflowLoggerCallback(
-                    tracking_uri=self.config.tracking.tracking_uri,
-                    experiment_name=self.config.tracking.experiment_name,
-                    save_artifact=True,
-                )
-            ],
-        )
+            tuner_resourcers = tune.with_resources(
+                tuner_parameters,
+                resources={
+                    "cpu": self.config.hpo.cpu_resources_per_trial,
+                    "gpu": self.config.hpo.gpu_resources_per_trial,
+                },
+            )
 
-        tuner = tune.Tuner(
-            trainable=tuner_resourcers,
-            param_space=param_space,
-            tune_config=tune_config,
-            run_config=run_config,
-        )
+            scheduler = ASHAScheduler(
+                max_t=self.config.hpo.max_epochs,
+                grace_period=self.config.hpo.grace_period,
+                reduction_factor=self.config.hpo.reduction_factor,
+                metric="val_loss",
+                mode="min",
+            )
 
-        results = tuner.fit()
-        best_result = results.get_best_result(metric="val_loss", mode="min")
+            search_alg = OptunaSearch(
+                metric="val_loss",
+                mode="min",
+            )
 
-        return best_result.config, best_result.metrics
+            tune_config = tune.TuneConfig(
+                scheduler=scheduler,
+                search_alg=search_alg,
+                num_samples=self.config.hpo.num_samples,
+                max_concurrent_trials=self.config.hpo.max_concurrent_trials,
+            )
 
+            run_config = tune.RunConfig(
+                name=self.config.hpo.experiment_name,
+                callbacks=[
+                    MLflowLoggerCallback(
+                        tracking_uri=self.config.tracking.tracking_uri,
+                        experiment_name=self.config.tracking.experiment_name,
+                        save_artifact=True,
+                    )
+                ],
+            )
 
-if __name__ == "__main__":
-    from pathlib import Path
+            tuner = tune.Tuner(
+                trainable=tuner_resourcers,
+                param_space=param_space,
+                tune_config=tune_config,
+                run_config=run_config,
+            )
 
-    config_path = Path("configs/config.yaml")
-    app_config = AppConfig.from_yaml(config_path)
+            logger.info(
+                "Starting Ray Tune execution (samples=%d, max_concurrent=%d)...",
+                self.config.hpo.num_samples,
+                self.config.hpo.max_concurrent_trials,
+            )
 
-    pipeline = HPOPipeline(app_config)
-    best_config, best_metrics = pipeline.run()
+            results = tuner.fit()
+            best_result = results.get_best_result(metric="val_loss", mode="min")
 
-    print(f"Best config: {best_config}")
-    print(f"Best metrics: {best_metrics}")
+            logger.info("Ray Tune HPO search completed successfully.")
+            logger.info("Best trial config: %s", best_result.config)
+            logger.info("Best trial metrics: %s", best_result.metrics)
+
+            return best_result.config, best_result.metrics
+
+        except Exception as e:
+            logger.exception("Critical error during HPO pipeline execution: %s", str(e))
+            raise RecycleNetException(
+                "Error encountered during distributed Ray Tune HPO execution", e
+            ) from e
