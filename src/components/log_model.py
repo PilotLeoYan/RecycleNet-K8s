@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from mlflow.models import infer_signature
 
-from src.config.schema import TrackingConfig
+from src.config import TrackingConfig
 
 
 class LogModel:

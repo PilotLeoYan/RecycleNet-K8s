@@ -1,7 +1,13 @@
-.PHONY: run format lint test check
+.PHONY: train hpo mlflow format lint test check
 
-run:
-	uv run python -m src
+train:
+	uv run python -m src train
+
+hpo:
+	uv run python -m src hpo
+
+mlflow:
+	uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
 
 
 format:
