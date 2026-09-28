@@ -151,6 +151,7 @@ class TrainPipeline:
                         "batch_size": self.config.transformation.batch_size,
                         # Seeds
                         "seed_torch": self.config.reproducibility.torch_seed,
+                        "deterministic": self.config.reproducibility.deterministic,
                         # Model
                         "model_architecture": "mobilenet_v3_small",
                         "num_classes": len(self.transformation.classes),

@@ -23,6 +23,8 @@ def train_eval_trial(
     data_dir: Path,
     app_config: AppConfig,
 ) -> None:
+    make_reproducibility(app_config.reproducibility)
+
     trans_config = TransformationConfig(
         image_size=app_config.transformation.image_size,
         image_mean=app_config.transformation.image_mean,

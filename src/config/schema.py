@@ -88,11 +88,20 @@ class ReproducibilityConfig(BaseModel):
         random_seed: Seed for standard Python random and hashseed generation.
         numpy_seed: Seed for NumPy pseudorandom number generators.
         torch_seed: Seed for PyTorch CPU and CUDA random number generators.
+        deterministic: Bool for deterministic in cuDNN and PyTorch.
+        warn_only: Bool for warn instead launch exception in when deterministic=True.
     """
 
     random_seed: int = 42
     numpy_seed: int = 42
     torch_seed: int = 42
+    deterministic: bool = Field(
+        default=True,
+        description="If True, use deterministic algorithms in "
+        "cuDNN and PyTorch (slower). "
+        "If False, allow cuDNN benchmark for max speed.",
+    )
+    warn_only: bool = Field(default=True)
 
     def __str__(self) -> str:
         return f"""ReproducibilityConfig:

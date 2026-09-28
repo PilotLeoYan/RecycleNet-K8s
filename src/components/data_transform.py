@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from src.config.schema import TransformationConfig
 
 
-def seed_worker(worker_id: int) -> None:
+def seed_worker(_worker_id: int) -> None:
     """Sets random seeds for NumPy and Python random in DataLoader worker processes.
 
     Ensures deterministic augmentations and operations across multi-process data
@@ -18,7 +18,7 @@ def seed_worker(worker_id: int) -> None:
     worker seed.
 
     Args:
-        worker_id: The integer ID of the worker subprocess.
+        _worker_id: The integer ID of the worker subprocess.
     """
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)

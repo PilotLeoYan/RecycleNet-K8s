@@ -46,7 +46,7 @@ def test_reproducibility_with_same_seed(fake_dataset: Path) -> None:
 
 def test_seed_worker_sets_numpy_and_random_seeds() -> None:
     torch.manual_seed(99999)
-    seed_worker(worker_id=0)
+    seed_worker(0)
 
     expected_seed = torch.initial_seed() % 2**32
     np.random.seed(expected_seed)
@@ -56,7 +56,7 @@ def test_seed_worker_sets_numpy_and_random_seeds() -> None:
 
     # Re-run seed_worker and verify random streams match expected
     torch.manual_seed(99999)
-    seed_worker(worker_id=0)
+    seed_worker(0)
     assert np.random.randint(0, 1000000) == expected_np
     assert random.randint(0, 1000000) == expected_py
 
