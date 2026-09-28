@@ -38,10 +38,11 @@ class TrainPipeline:
             config: Training pipeline configuration settings.
         """
         self.config = config
-        self.ingestion = DataIngestion(config.ingestion)
-        self.transformation = DataTransformation(config.transformation)
-
         make_reproducibility(config.reproducibility)
+        self.ingestion = DataIngestion(config.ingestion)
+        self.transformation = DataTransformation(
+            config.transformation, seed=config.reproducibility.torch_seed
+        )
 
     def run(self) -> None:
         """Executes the full end-to-end training and evaluation workflow.
@@ -150,6 +151,7 @@ class TrainPipeline:
                         "batch_size": self.config.transformation.batch_size,
                         # Seeds
                         "seed_torch": self.config.reproducibility.torch_seed,
+                        "deterministic": self.config.reproducibility.deterministic,
                         # Model
                         "model_architecture": "mobilenet_v3_small",
                         "num_classes": len(self.transformation.classes),

@@ -23,6 +23,8 @@ def train_eval_trial(
     data_dir: Path,
     app_config: AppConfig,
 ) -> None:
+    make_reproducibility(app_config.reproducibility)
+
     trans_config = TransformationConfig(
         image_size=app_config.transformation.image_size,
         image_mean=app_config.transformation.image_mean,
@@ -35,8 +37,11 @@ def train_eval_trial(
         batch_size=config["batch_size"],
         num_workers=config["dataloader_n_workers"],
         pin_memory=app_config.transformation.pin_memory,
+        seed=app_config.reproducibility.torch_seed,
     )
-    transformation = DataTransformation(trans_config)
+    transformation = DataTransformation(
+        trans_config, seed=app_config.reproducibility.torch_seed
+    )
     train_loader, valid_loader, _ = transformation.get_dataloaders(data_dir)
 
     model = build_mobilenet_v3(len(transformation.classes))

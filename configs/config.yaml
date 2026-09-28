@@ -19,6 +19,8 @@ reproducibility:
   random_seed: 42
   numpy_seed: 42
   torch_seed: 42
+  deterministic: True
+  warn_only: True
 
 training:
   epochs: 1

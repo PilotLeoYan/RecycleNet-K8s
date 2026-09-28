@@ -1,13 +1,28 @@
-"""Data transformation component for image preprocessing and DataLoaders."""
-
+import random
 from pathlib import Path
 
+import numpy as np
 import torch
 import torchvision.datasets as datasets
 import torchvision.transforms.v2 as v2
 from torch.utils.data import DataLoader, Dataset, Subset, random_split
 
 from src.config.schema import TransformationConfig
+
+
+def seed_worker(_worker_id: int) -> None:
+    """Sets random seeds for NumPy and Python random in DataLoader worker processes.
+
+    Ensures deterministic augmentations and operations across multi-process data
+    loading workers by reseeding external libraries using PyTorch's generated
+    worker seed.
+
+    Args:
+        _worker_id: The integer ID of the worker subprocess.
+    """
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
 
 
 class TransformSubset(Dataset):
@@ -54,17 +69,20 @@ class DataTransformation:
 
     Attributes:
         config: Transformation configuration parameters.
+        seed: Optional random seed for reproducible DataLoader sampling and splitting.
         classes: List of class directory names detected in the dataset.
         class_to_idx: Mapping from class names to integer target indices.
     """
 
-    def __init__(self, config: TransformationConfig):
-        """Initializes DataTransformation with configuration.
+    def __init__(self, config: TransformationConfig, seed: int | None = None):
+        """Initializes DataTransformation with configuration and optional seed.
 
         Args:
             config: Data transformation configuration.
+            seed: Optional random seed for DataLoaders and dataset splitting.
         """
         self.config = config
+        self.seed = seed if seed is not None else getattr(config, "seed", None)
         self.classes: list[str] = []
         self.class_to_idx: dict[str, int] = {}
 
@@ -117,15 +135,25 @@ class DataTransformation:
         """
         return datasets.ImageFolder(root=raw_data_dir)
 
-    def _get_subsets(self, dataset: Dataset) -> list[Subset]:
+    def _get_subsets(
+        self, dataset: Dataset, generator: torch.Generator | None = None
+    ) -> list[Subset]:
         """Splits the complete dataset into train, validation, and test subsets.
 
         Args:
             dataset: The full PyTorch dataset.
+            generator: Optional PyTorch Generator for reproducible subset splitting.
 
         Returns:
             list[Subset]: Subsets for train, validation, and test splits.
         """
+        if generator is None:
+            generator = torch.Generator()
+            if self.seed is not None:
+                generator.manual_seed(self.seed)
+            else:
+                generator.manual_seed(torch.initial_seed())
+
         return random_split(
             dataset,
             (
@@ -133,19 +161,30 @@ class DataTransformation:
                 self.config.eval_split,
                 self.config.test_split,
             ),
+            generator=generator,
         )
 
-    def _get_dataloader(self, dataset: Dataset, is_train: bool) -> DataLoader:
+    def _get_dataloader(
+        self, dataset: Dataset, is_train: bool, generator: torch.Generator | None = None
+    ) -> DataLoader:
         """Wraps a dataset into a configured PyTorch DataLoader.
 
         Args:
             dataset: Dataset or TransformSubset to wrap.
             is_train: Whether this DataLoader is for training (enables shuffling
                 and drop_last).
+            generator: Optional PyTorch Generator for DataLoader sampling.
 
         Returns:
             DataLoader: Configured PyTorch DataLoader instance.
         """
+        if generator is None:
+            generator = torch.Generator()
+            if self.seed is not None:
+                generator.manual_seed(self.seed)
+            else:
+                generator.manual_seed(torch.initial_seed())
+
         return DataLoader(
             dataset,
             batch_size=self.config.batch_size,
@@ -153,6 +192,8 @@ class DataTransformation:
             num_workers=self.config.num_workers,
             pin_memory=self.config.pin_memory,
             drop_last=is_train,
+            worker_init_fn=seed_worker,
+            generator=generator,
         )
 
     def get_dataloaders(
