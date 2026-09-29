@@ -15,7 +15,7 @@ from src.config import TrackingConfig
 
 
 class LogModel:
-    """Handles communication with MLflow for run tracking and model registry.
+    """Handle communication with MLflow for run tracking and model registry.
 
     Attributes:
         config: Tracking configuration settings for MLflow.
@@ -26,7 +26,7 @@ class LogModel:
         config: TrackingConfig | None = None,
         registered_model_name: str | None = None,
     ) -> None:
-        """Initializes the LogModel tracking helper.
+        """Initialize the LogModel tracking helper.
 
         Args:
             config: MLflow tracking configuration settings. If None, default
@@ -53,7 +53,7 @@ class LogModel:
         valid_metrics: dict[str, float],
         step: int,
     ) -> None:
-        """Logs training and validation metrics for a specific epoch step.
+        """Log training and validation metrics for a specific epoch step.
 
         Args:
             train_loss: Average loss on the training dataset.
@@ -83,7 +83,7 @@ class LogModel:
         metrics: dict[str, float],
         fig_cm: Any,
     ) -> None:
-        """Logs final test evaluation metrics and confusion matrix plot to MLflow.
+        """Log final test evaluation metrics and confusion matrix plot to MLflow.
 
         Args:
             roc: Area Under ROC Curve score on test dataset.
@@ -113,7 +113,7 @@ class LogModel:
         model: Any,
         registered_model_name: str | None = None,
     ) -> None:
-        """Logs and registers the trained PyTorch model with schema signature.
+        """Log and register the trained PyTorch model with schema signature.
 
         Args:
             dummy_input: Sample input array for schema signature inference.
@@ -172,7 +172,12 @@ class LogModel:
         checkpoint_path: Path,
         artifact_subdir: str = "checkpoints",
     ) -> None:
-        """Logs file raw .pth in MLflow artifacts."""
+        """Log raw .pth checkpoint file to MLflow artifacts.
+
+        Args:
+            checkpoint_path: Path to the model weights checkpoint file.
+            artifact_subdir: Destination subdirectory within MLflow artifacts.
+        """
         if not mlflow.active_run():
             return
 
@@ -188,7 +193,14 @@ class LogModel:
         params: dict[str, Any],
         config_dict: dict[str, Any],
     ) -> None:
-        """Logs metadata and configuration."""
+        """Log pipeline metadata, tags, and configuration to MLflow.
+
+        Args:
+            idx_to_class: Mapping from class indices to class labels.
+            tags: Dictionary of MLflow run tags.
+            params: Dictionary of pipeline hyperparameters and settings.
+            config_dict: Serialized configuration dictionary.
+        """
         if not mlflow.active_run():
             return
 

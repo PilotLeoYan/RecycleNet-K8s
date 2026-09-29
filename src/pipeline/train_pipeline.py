@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 
 class TrainPipeline:
-    """Orchestrates end-to-end ingestion, training, evaluation, and tracking.
+    """Orchestrate end-to-end ingestion, training, evaluation, and tracking.
 
     Attributes:
         config: High-level pipeline execution configuration.
@@ -28,7 +28,7 @@ class TrainPipeline:
     """
 
     def __init__(self, config: AppConfig):
-        """Initializes the training pipeline with configuration and subcomponents.
+        """Initialize the training pipeline with configuration and subcomponents.
 
         Args:
             config: Training pipeline configuration settings.
@@ -42,7 +42,7 @@ class TrainPipeline:
         )
 
     def run(self) -> None:
-        """Executes the full end-to-end training and evaluation workflow.
+        """Execute the full end-to-end training and evaluation workflow.
 
         Steps:
             1. Ingests and unpacks the raw dataset archive.

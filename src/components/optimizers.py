@@ -12,7 +12,7 @@ def get_optimizer(
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-4,
 ) -> Optimizer:
-    """Instantiates and returns the default optimizer for model parameters.
+    """Instantiate and return the default optimizer for model parameters.
 
     Args:
         params: Iterable of trainable model parameters.

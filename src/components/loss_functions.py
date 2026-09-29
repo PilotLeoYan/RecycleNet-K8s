@@ -5,7 +5,7 @@ from torch import nn
 
 
 def get_criterion() -> nn.Module:
-    """Instantiates and returns the default loss function criterion.
+    """Instantiate and return the default loss function criterion.
 
     Returns:
         nn.Module: CrossEntropyLoss module for multi-class classification.

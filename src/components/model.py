@@ -9,7 +9,7 @@ from torchvision.models import (
 
 
 def build_mobilenet_v3(num_classes: int, freeze_base: bool = True) -> MobileNetV3:
-    """Constructs a pre-trained MobileNetV3-Small architecture for classification.
+    """Construct a pre-trained MobileNetV3-Small architecture for classification.
 
     Loads the default ImageNet pre-trained weights, freezes backbone convolutional
     layers if requested, and replaces the final linear layer with a new trainable

@@ -86,7 +86,7 @@ class HPOPipeline:
         self,
         config: AppConfig,
     ) -> None:
-        """Initializes the HPO pipeline with configuration and deterministic seed.
+        """Initialize the HPO pipeline with configuration and deterministic seed.
 
         Args:
             config: Root application configuration.
@@ -95,14 +95,14 @@ class HPOPipeline:
         make_reproducibility(self.config.reproducibility)
 
     def run(self) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-        """Executes the Ray Tune search across worker resources.
+        """Execute the Ray Tune search across worker resources.
 
         Returns:
             tuple[dict[str, Any] | None, dict[str, Any] | None]: Best trial
                 hyperparameter configuration and corresponding evaluation metrics.
 
         Raises:
-            RecycleNetException: if Ray Tune encouters a fatal execution failure.
+            RecycleNetException: If Ray Tune encounters a fatal execution failure.
         """
         logger.info("Initializing Ray Tune HPO pipeline...")
 

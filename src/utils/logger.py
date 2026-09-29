@@ -20,7 +20,7 @@ from src.utils.formatter import JSONFormatter, LocalFormatter
 
 
 def _use_json_logging() -> bool:
-    """Determines whether to format logs as structured JSON or colorized console text.
+    """Determine whether to format logs as structured JSON or colorized console text.
 
     Checks the `LOG_FORMAT` environment variable first, then probes for common
     Google Cloud runtime environment variables (Cloud Run, Functions, App Engine,
@@ -46,7 +46,7 @@ def _use_json_logging() -> bool:
 
 
 def get_logger(name: str, level: int | None = None) -> logging.Logger:
-    """Creates or retrieves a configured logger instance.
+    """Create or retrieve a configured logger instance.
 
     Configures a `StreamHandler` targeting `sys.stdout` with either `JSONFormatter`
     or `LocalFormatter` depending on the runtime environment.

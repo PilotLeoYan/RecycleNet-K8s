@@ -59,7 +59,14 @@ class TransformationConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_splits(self) -> TransformationConfig:
-        """Ensures train, validation, and test splits sum up to 1.0."""
+        """Ensure train, validation, and test splits sum up to 1.0.
+
+        Returns:
+            TransformationConfig: Validated transformation configuration instance.
+
+        Raises:
+            ValueError: If split proportions do not sum to 1.0.
+        """
         total = self.train_split + self.eval_split + self.test_split
         if not abs(total - 1.0) < 1e-5:
             raise ValueError(f"Splits must sum to 1.0, got: {total}")
@@ -88,8 +95,8 @@ class ReproducibilityConfig(BaseModel):
         random_seed: Seed for standard Python random and hashseed generation.
         numpy_seed: Seed for NumPy pseudorandom number generators.
         torch_seed: Seed for PyTorch CPU and CUDA random number generators.
-        deterministic: Bool for deterministic in cuDNN and PyTorch.
-        warn_only: Bool for warn instead launch exception in when deterministic=True.
+        deterministic: Whether to enforce deterministic algorithms in cuDNN and PyTorch.
+        warn_only: Whether to warn instead of raising an exception when deterministic=True.
     """
 
     random_seed: int = 42
@@ -139,7 +146,14 @@ class TrainingConfig(BaseModel):
 
 
 class TrackingConfig(BaseModel):
-    """Configuration for MLflow tracking"""
+    """Configuration for MLflow tracking.
+
+    Attributes:
+        experiment_name: Name of the MLflow experiment.
+        registered_model_name: Name under which model will be registered.
+        tracking_uri: URI for the MLflow tracking server or database.
+        tags: Default tags to attach to each MLflow run.
+    """
 
     experiment_name: str = "RecycleNet_Training"
     registered_model_name: str = "RecycleNet"
@@ -161,7 +175,23 @@ class TrackingConfig(BaseModel):
 
 
 class HPOConfig(BaseModel):
-    """Configuration for Hyperparameters Optimization"""
+    """Configuration for hyperparameter optimization (HPO).
+
+    Attributes:
+        weight_decay_range: Range (min, max) for weight decay search.
+        learning_rate_range: Range (min, max) for learning rate search.
+        batch_size: List of candidate batch sizes.
+        num_samples: Number of Ray Tune hyperparameter samples.
+        max_epochs: Maximum epochs per trial.
+        grace_period: Grace period epochs before trial pruning.
+        reduction_factor: ASHA scheduler reduction factor.
+        dataloader_n_workers: Number of workers for data loading.
+        max_concurrent_trials: Maximum number of concurrent Ray Tune trials.
+        cpu_resources_per_trial: CPU cores allocated per trial.
+        gpu_resources_per_trial: GPU resources allocated per trial.
+        device: Target execution device ('cpu' or 'cuda').
+        experiment_name: MLflow experiment name for HPO runs.
+    """
 
     # loguniform(1e-4, 1e-1)
     weight_decay_range: tuple[float, float] = Field(default=(1e-4, 1e-1))
@@ -181,7 +211,16 @@ class HPOConfig(BaseModel):
 
 
 class AppConfig(BaseSettings):
-    """Root application configuration"""
+    """Root application configuration.
+
+    Attributes:
+        ingestion: Dataset ingestion configuration.
+        transformation: Data transformation and loading configuration.
+        reproducibility: Random seed and reproducibility configuration.
+        training: Model training configuration.
+        tracking: MLflow tracking configuration.
+        hpo: Hyperparameter optimization configuration.
+    """
 
     ingestion: IngestionConfig
     transformation: TransformationConfig
@@ -200,7 +239,18 @@ class AppConfig(BaseSettings):
 
     @classmethod
     def from_yaml(cls, yaml_path: Path | str) -> AppConfig:
-        """Loads configuration from a YAML file."""
+        """Load configuration from a YAML file.
+
+        Args:
+            yaml_path: Filepath to the YAML configuration file.
+
+        Returns:
+            AppConfig: Instantiated application configuration.
+
+        Raises:
+            FileNotFoundError: If the configuration file does not exist.
+            ValueError: If the YAML content is not a mapping.
+        """
         path = Path(yaml_path)
         if not path.exists():
             raise FileNotFoundError(f"Configuration file not found: {path}")

@@ -20,7 +20,7 @@ class RecycleNetException(Exception):
         message: str,
         original_error: BaseException | None = None,
     ) -> None:
-        """Initializes RecycleNetException with detailed error and traceback metadata.
+        """Initialize RecycleNetException with detailed error and traceback metadata.
 
         Args:
             message: High-level explanation of what failed.

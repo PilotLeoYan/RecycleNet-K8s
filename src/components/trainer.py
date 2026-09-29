@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class ModelTrainer:
-    """Orchestrates model training, validation, early stopping, and tracking.
+    """Orchestrate model training, validation, early stopping, and tracking.
 
     Attributes:
         model: PyTorch model being trained.
@@ -40,7 +40,7 @@ class ModelTrainer:
         device: torch.device | str,
         logmodel: LogModel | None = None,
     ):
-        """Initializes ModelTrainer with training dependencies and target device.
+        """Initialize ModelTrainer with training dependencies and target device.
 
         Args:
             model: PyTorch neural network to train.
@@ -61,7 +61,7 @@ class ModelTrainer:
         self.model.to(self.device)
 
     def _train_step(self) -> float:
-        """Executes a single training epoch across all mini-batches in train_loader.
+        """Execute a single training epoch across all mini-batches in train_loader.
 
         Returns:
             float: Average training loss across all samples in the epoch.
@@ -87,7 +87,7 @@ class ModelTrainer:
 
     @torch.inference_mode()
     def _valid_step(self) -> tuple[float, dict[str, float]]:
-        """Executes a validation pass over val_loader computing loss and metrics.
+        """Execute a validation pass over val_loader computing loss and metrics.
 
         Returns:
             tuple[float, dict[str, float]]: Average validation loss and computed
@@ -120,9 +120,10 @@ class ModelTrainer:
     def _save_weights(
         self, run_id: str | int, weights_path: Path, is_best: bool = False
     ) -> Path:
-        """Saves current model weights (state dict) to the specified path.
+        """Save current model weights (state dict) to the specified path.
 
         Args:
+            run_id: Unique identifier for the training run.
             weights_path: Directory path where weights will be stored.
             is_best: Whether this checkpoint represents the best validation loss so far.
 
@@ -145,7 +146,7 @@ class ModelTrainer:
     def fit(
         self, run_id: int | str, epochs: int, weights_path: str, patience: int = 3
     ) -> Path:
-        """Runs the complete training and validation cycle with early stopping.
+        """Run the complete training and validation cycle with early stopping.
 
         Args:
             run_id: MLflow tracking ID.

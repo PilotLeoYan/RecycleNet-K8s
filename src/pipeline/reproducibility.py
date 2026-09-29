@@ -16,7 +16,7 @@ __all__ = ["make_reproducibility", "seed_worker"]
 
 
 def make_reproducibility(config: ReproducibilityConfig) -> None:
-    """Sets random seeds across Python, NumPy, PyTorch, and CUDA backends.
+    """Set random seeds across Python, NumPy, PyTorch, and CUDA backends.
 
     Args:
         config: Configuration containing random seed values.

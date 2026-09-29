@@ -7,14 +7,14 @@ from src.config.schema import IngestionConfig
 
 
 class DataIngestion:
-    """Manages extraction and verification of raw dataset archives.
+    """Manage extraction and verification of raw dataset archives.
 
     Attributes:
         config: Ingestion configuration containing source and destination paths.
     """
 
     def __init__(self, config: IngestionConfig) -> None:
-        """Initializes DataIngestion with configuration settings.
+        """Initialize DataIngestion with configuration settings.
 
         Args:
             config: Data ingestion configuration parameters.
@@ -22,7 +22,7 @@ class DataIngestion:
         self.config = config
 
     def extract_dataset(self) -> Path:
-        """Extracts the zipped dataset archive into the raw output directory.
+        """Extract the zipped dataset archive into the raw output directory.
 
         Returns:
             Path: Path to the extracted dataset directory containing class subfolders.
