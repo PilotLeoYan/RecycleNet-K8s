@@ -59,7 +59,7 @@ def train_eval_trial(
         criterion=criterion,
         optimizer=optimizer,
         device=config["device"],
-        tracking_config=None,
+        logmodel=None,
     )
 
     for _ in range(config["max_epochs"]):
@@ -168,7 +168,7 @@ class HPOPipeline:
                 callbacks=[
                     MLflowLoggerCallback(
                         tracking_uri=self.config.tracking.tracking_uri,
-                        experiment_name=self.config.tracking.experiment_name,
+                        experiment_name=self.config.hpo.experiment_name,
                         save_artifact=True,
                     )
                 ],
