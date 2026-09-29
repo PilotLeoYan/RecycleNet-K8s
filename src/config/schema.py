@@ -119,6 +119,7 @@ class TrainingConfig(BaseModel):
         learning_rate: Learning Rate (LR), Alpha, or Learning Step.
         weight_decay: Weight Decay, Lambda, or Penalty.
         device: Device identifier string ('cuda' or 'cpu').
+        checkpoints_dir: Path to storage experiments weights.
     """
 
     epochs: int = Field(default=10, ge=1)
@@ -126,6 +127,7 @@ class TrainingConfig(BaseModel):
     learning_rate: float = Field(default=1e-3, gt=0)
     weight_decay: float = Field(default=1e-4, ge=0.0)
     device: str = "cuda"
+    checkpoints_dir: Path = Field(default=Path("artifacts/checkpoints"))
 
     def __str__(self) -> str:
         return f"""TrainingConfig:
@@ -142,6 +144,14 @@ class TrackingConfig(BaseModel):
     experiment_name: str = "RecycleNet_Training"
     registered_model_name: str = "RecycleNet"
     tracking_uri: str = "sqlite:///mlflow.db"
+    tags: dict[str, str] = Field(
+        default_factory=lambda: {
+            "framework": "pytorch",
+            "model_architecture": "mobilenet_v3_small",
+            "dataset": "trashnet",
+            "task": "image_classification",
+        }
+    )
 
     def __str__(self) -> str:
         return f"""TrackingConfig

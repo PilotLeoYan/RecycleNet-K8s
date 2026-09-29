@@ -5,13 +5,14 @@ import mlflow
 import mlflow.pytorch
 import numpy as np
 import pytest
+import torch
 from torch import nn
 
 from src.components.log_model import LogModel
 from src.config.schema import TrackingConfig
 
 
-def test_log_model_no_active_run() -> None:
+def test_log_model_no_active_run(tmp_path: Path) -> None:
     logger_model = LogModel()
 
     # When no active run exists, methods should return safely without raising errors
@@ -43,6 +44,22 @@ def test_log_model_no_active_run() -> None:
     dummy_output = np.random.randn(1, 2).astype(np.float32)
     model = nn.Linear(32, 2)
     logger_model.log_model(dummy_input, dummy_output, model)
+
+    ckpt_path = tmp_path / "weights.pth"
+    torch.save(model.state_dict(), ckpt_path)
+    logger_model.log_checkpoint_artifact(ckpt_path)
+    logger_model.log_pipeline_metadata(
+        idx_to_class={"0": "class_0"},
+        tags={"env": "test"},
+        params={"lr": 0.001},
+        config_dict={"key": "val"},
+    )
+    logger_model.register_checkpoint(
+        model=model,
+        best_weights_path=ckpt_path,
+        input_shape=(1, 3, 32, 32),
+        device="cpu",
+    )
 
 
 def test_log_epoch_with_active_run(
@@ -134,3 +151,91 @@ def test_log_model_registered_model_name_dynamic_override(
 def test_log_model_init_override() -> None:
     logger = LogModel(registered_model_name="DirectOverride")
     assert logger.config.registered_model_name == "DirectOverride"
+
+
+def test_start_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MLFLOW_ALLOW_FILE_STORE", "true")
+    db_path = tmp_path / "mlflow.db"
+    config = TrackingConfig(
+        tracking_uri=f"sqlite:///{db_path}",
+        experiment_name="test_start_run_exp",
+    )
+    logger = LogModel(config=config)
+
+    active_run = logger.start_run()
+    assert isinstance(active_run, mlflow.ActiveRun)
+
+    run = mlflow.active_run()
+    assert run is not None
+    assert run.info.run_id == active_run.info.run_id
+    mlflow.end_run()
+
+
+def test_log_checkpoint_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MLFLOW_ALLOW_FILE_STORE", "true")
+    db_path = tmp_path / "mlflow.db"
+    config = TrackingConfig(
+        tracking_uri=f"sqlite:///{db_path}",
+        experiment_name="test_artifact_exp",
+    )
+    logger = LogModel(config=config)
+
+    ckpt_file = tmp_path / "checkpoint.pth"
+    ckpt_file.write_text("weights_data")
+
+    # With active run
+    with logger.start_run():
+        logger.log_checkpoint_artifact(ckpt_file, artifact_subdir="test_ckpts")
+
+
+def test_log_pipeline_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MLFLOW_ALLOW_FILE_STORE", "true")
+    db_path = tmp_path / "mlflow.db"
+    config = TrackingConfig(
+        tracking_uri=f"sqlite:///{db_path}",
+        experiment_name="test_meta_exp",
+    )
+    logger = LogModel(config=config)
+
+    # With active run
+    with logger.start_run():
+        logger.log_pipeline_metadata(
+            idx_to_class={"0": "cardboard", "1": "glass"},
+            tags={"hardware": "cpu", "framework": "pytorch"},
+            params={"learning_rate": 0.001, "epochs": 5},
+            config_dict={"sample_config": 123},
+        )
+
+
+def test_register_checkpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MLFLOW_ALLOW_FILE_STORE", "true")
+    db_path = tmp_path / "mlflow.db"
+    config = TrackingConfig(
+        tracking_uri=f"sqlite:///{db_path}",
+        experiment_name="test_reg_exp",
+    )
+    logger = LogModel(config=config)
+
+    model = nn.Linear(10, 2)
+    weights_path = tmp_path / "best_model.pth"
+    torch.save(model.state_dict(), weights_path)
+
+    captured_kwargs: dict[str, object] = {}
+
+    def mock_log_model(**kwargs: object) -> None:
+        captured_kwargs.update(kwargs)
+
+    monkeypatch.setattr(mlflow.pytorch, "log_model", mock_log_model)
+
+    with logger.start_run():
+        logger.register_checkpoint(
+            model=model,
+            best_weights_path=weights_path,
+            input_shape=(1, 10),
+            device="cpu",
+        )
+
+    assert "pytorch_model" in captured_kwargs
+    assert captured_kwargs.get("name") == "model"

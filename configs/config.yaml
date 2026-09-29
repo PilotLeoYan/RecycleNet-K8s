@@ -28,11 +28,17 @@ training:
   learning_rate: 0.001
   weight_decay: 0.0001
   device: "cuda"
+  checkpoints_dir: "artifacts/checkpoints"
 
 tracking:
   experiment_name: "RecycleNet_Training"
   registered_model_name: "RecycleNet"
   tracking_uri: "sqlite:///mlflow.db"
+  tags:
+      framework: "pytorch"
+      model_architecture: "mobilenet_v3_small"
+      dataset: "trashnet"
+      task: "image_classification"
 
 hpo:
   weight_decay_range: [1e-4, 1e-1] # loguniform(1e-4, 1e-1)

@@ -8,9 +8,8 @@ from torch import nn
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.components.log_model import LogModel
+from src.components import LogModel
 from src.components.metrics import evals
-from src.config.schema import TrackingConfig
 from src.utils import get_logger
 
 logger = get_logger(__name__)
@@ -28,7 +27,7 @@ class ModelTrainer:
         criterion: Loss function module.
         optimizer: Optimization algorithm instance.
         device: Computation device (e.g., 'cuda' or 'cpu').
-        log_model: MLflow logging helper.
+        logmodel: Optional MLflow logging helper.
     """
 
     def __init__(
@@ -39,7 +38,7 @@ class ModelTrainer:
         criterion: nn.Module,
         optimizer: Optimizer,
         device: torch.device | str,
-        tracking_config: TrackingConfig | None = None,
+        logmodel: LogModel | None = None,
     ):
         """Initializes ModelTrainer with training dependencies and target device.
 
@@ -50,7 +49,7 @@ class ModelTrainer:
             criterion: Loss function module (e.g. CrossEntropyLoss).
             optimizer: Optimizer instance (e.g. AdamW).
             device: Target torch device or device string ('cuda', 'cpu').
-            tracking_config: Optional tracking configuration for MLflow logging.
+            logmodel: Optional MLflow logging helper.
         """
         self.model = model
         self.train_loader = train_loader
@@ -58,8 +57,7 @@ class ModelTrainer:
         self.criterion = criterion
         self.optimizer = optimizer
         self.device = torch.device(device) if isinstance(device, str) else device
-
-        self.log_model: LogModel = LogModel(config=tracking_config)
+        self.logmodel = logmodel
         self.model.to(self.device)
 
     def _train_step(self) -> float:
@@ -144,29 +142,6 @@ class ModelTrainer:
         )
         return path
 
-    def _registry_model(self, best_path: Path) -> None:
-        """Loads best checkpoint and logs model artifact and signature to MLflow.
-
-        Args:
-            best_path: Filepath of the best weights checkpoint.
-        """
-        self.model.load_state_dict(
-            torch.load(best_path, map_location=self.device, weights_only=True)
-        )
-        self.model.eval()
-
-        dummy_input = torch.randn(1, *self.val_loader.dataset[0][0].shape).to(
-            self.device
-        )
-        with torch.no_grad():
-            dummy_output = self.model(dummy_input)
-
-        self.log_model.log_model(
-            dummy_input.detach().cpu().numpy(),
-            dummy_output.detach().cpu().numpy(),
-            self.model,
-        )
-
     def fit(
         self, run_id: int | str, epochs: int, weights_path: str, patience: int = 3
     ) -> Path:
@@ -191,12 +166,13 @@ class ModelTrainer:
             train_loss = self._train_step()
             valid_loss, valid_metrics = self._valid_step()
 
-            self.log_model.log_epoch(
-                train_loss=train_loss,
-                valid_loss=valid_loss,
-                valid_metrics=valid_metrics,
-                step=epoch,
-            )
+            if self.logmodel is not None:
+                self.logmodel.log_epoch(
+                    train_loss=train_loss,
+                    valid_loss=valid_loss,
+                    valid_metrics=valid_metrics,
+                    step=epoch,
+                )
 
             new_best = False
             if valid_loss < best_loss:
@@ -222,8 +198,5 @@ class ModelTrainer:
 
         if best_path is None:
             best_path = self._save_weights(run_id, path, False)
-
-        if best_path.exists():
-            self._registry_model(best_path)
 
         return best_path

@@ -1,19 +1,15 @@
 """End-to-end training pipeline orchestrator for RecycleNet."""
 
-import tempfile
-from datetime import datetime
-
-import mlflow
-
 from src.components.data_ingestion import DataIngestion
 from src.components.data_transform import DataTransformation
 from src.components.evaluator import Evaluator
+from src.components.log_model import LogModel
 from src.components.loss_functions import get_criterion
 from src.components.model import build_mobilenet_v3
 from src.components.optimizers import get_optimizer
 from src.components.trainer import ModelTrainer
 from src.config.schema import AppConfig
-from src.pipeline.reproducibility import make_reproducibility
+from src.pipeline import make_reproducibility
 from src.utils import RecycleNetException, get_logger
 
 logger = get_logger(__name__)
@@ -39,6 +35,7 @@ class TrainPipeline:
         """
         self.config = config
         make_reproducibility(config.reproducibility)
+        self.logmodel = LogModel(config.tracking)
         self.ingestion = DataIngestion(config.ingestion)
         self.transformation = DataTransformation(
             config.transformation, seed=config.reproducibility.torch_seed
@@ -112,86 +109,66 @@ class TrainPipeline:
                 criterion=criterion,
                 optimizer=optimizer,
                 device=self.config.training.device,
-                tracking_config=self.config.tracking,
+                logmodel=self.logmodel,
             )
         except Exception as e:
             raise RecycleNetException("Error initialising the trainer", e) from e
 
         logger.info("Training...")
 
-        mlflow.set_tracking_uri(self.config.tracking.tracking_uri)
-        mlflow.set_experiment(self.config.tracking.experiment_name)
+        self.logmodel.set_experiment_tracking()
 
-        run_name = f"mobilenetv3_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        with mlflow.start_run(run_name=run_name) as active_run:
+        checkpoints_dir = self.config.training.checkpoints_dir
+        checkpoints_dir.mkdir(parents=True, exist_ok=True)
+
+        pipeline_tags = self.config.tracking.tags.copy()
+        pipeline_tags["hardware"] = self.config.training.device
+
+        with self.logmodel.start_run() as active_run:
             logger.info("Active MLflow Run ID: %s", active_run.info.run_id)
 
             idx_to_class = {
                 str(idx): name for idx, name in enumerate(self.transformation.classes)
             }
-            mlflow.log_dict(idx_to_class, "classes_mapping.json")
 
             try:
-                mlflow.set_tags(
-                    {
-                        "framework": "pytorch",
-                        "model_architecture": "mobilenet_v3_small",
-                        "dataset": "trashnet",
-                        "task": "image_classification",
-                        "hardware": self.config.training.device,
-                    }
-                )
-
-                mlflow.log_params(
-                    {
-                        # Pipeline & Hardware
-                        "device": self.config.training.device,
+                self.logmodel.log_pipeline_metadata(
+                    idx_to_class=idx_to_class,
+                    tags=pipeline_tags,
+                    params={
                         "epochs": self.config.training.epochs,
                         "patience": self.config.training.patience,
                         "batch_size": self.config.transformation.batch_size,
-                        # Seeds
-                        "seed_torch": self.config.reproducibility.torch_seed,
-                        "deterministic": self.config.reproducibility.deterministic,
-                        # Model
-                        "model_architecture": "mobilenet_v3_small",
-                        "num_classes": len(self.transformation.classes),
-                        "freeze_base": True,
-                        # Optimizer & Loss
-                        "optimizer": optimizer.__class__.__name__,
                         "learning_rate": optimizer.param_groups[0]["lr"],
                         "weight_decay": optimizer.param_groups[0].get(
                             "weight_decay", 0.0
                         ),
-                        "criterion": criterion.__class__.__name__,
-                        # Preprocessing & Augmentation
-                        "image_size": f"{self.config.transformation.image_size[0]}x"
-                        f"{self.config.transformation.image_size[1]}",
-                        "random_h_flip_prob": self.config.transformation.random_h_flip,
-                        "random_rotation_deg": str(
-                            self.config.transformation.random_rotation
-                        ),
-                        "split_ratios": f"{self.config.transformation.train_split}/"
-                        f"{self.config.transformation.eval_split}/"
-                        f"{self.config.transformation.test_split}",
-                    }
+                    },
+                    config_dict=self.config.model_dump(mode="json"),
                 )
 
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    best_path = trainer.fit(
-                        run_id=active_run.info.run_id,
-                        epochs=self.config.training.epochs,
-                        weights_path=temp_dir,
-                        patience=self.config.training.patience,
-                    )
+                best_path = trainer.fit(
+                    run_id=active_run.info.run_id,
+                    epochs=self.config.training.epochs,
+                    weights_path=str(checkpoints_dir),
+                    patience=self.config.training.patience,
+                )
+                self.logmodel.register_checkpoint(
+                    model=model,
+                    best_weights_path=best_path,
+                    input_shape=(1, *valid_loader.dataset[0][0].shape),
+                    device=self.config.training.device,
+                )
+                self.logmodel.log_checkpoint_artifact(best_path)
 
-                    logger.info("Running test evaluation...")
-                    evaluator = Evaluator(
-                        model=model,
-                        weights_path=best_path,
-                        test_loader=test_loader,
-                        device=self.config.training.device,
-                    )
-                    evaluator.evaluate()
+                logger.info("Running test evaluation...")
+                evaluator = Evaluator(
+                    model=model,
+                    weights_path=best_path,
+                    test_loader=test_loader,
+                    device=self.config.training.device,
+                )
+                evaluator.evaluate()
 
             except Exception as e:
                 raise RecycleNetException(

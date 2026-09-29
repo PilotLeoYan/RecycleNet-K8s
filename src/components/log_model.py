@@ -1,10 +1,14 @@
 """MLflow tracking integration for logging metrics, artifacts, and PyTorch models."""
 
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import mlflow
 import numpy as np
+import torch
 from matplotlib import pyplot as plt
+from mlflow import ActiveRun
 from mlflow.models import infer_signature
 
 from src.config import TrackingConfig
@@ -32,6 +36,15 @@ class LogModel:
         self.config = config.model_copy() if config is not None else TrackingConfig()
         if registered_model_name is not None:
             self.config.registered_model_name = registered_model_name
+
+    def set_experiment_tracking(self) -> None:
+        mlflow.set_tracking_uri(self.config.tracking_uri)
+        mlflow.set_experiment(self.config.experiment_name)
+
+    def start_run(self) -> ActiveRun:
+        self.set_experiment_tracking()
+        run_name = f"mobilenetv3_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        return mlflow.start_run(run_name=run_name)
 
     def log_epoch(
         self,
@@ -112,13 +125,8 @@ class LogModel:
             return
 
         signature = infer_signature(dummy_input, dummy_output)
-
         cpu_model = model.to("cpu") if hasattr(model, "to") else model
-        target_model_name = (
-            registered_model_name
-            if registered_model_name is not None
-            else self.config.registered_model_name
-        )
+        target_name = registered_model_name or self.config.registered_model_name
 
         mlflow.pytorch.log_model(
             pytorch_model=cpu_model,
@@ -126,10 +134,65 @@ class LogModel:
             signature=signature,
             input_example=dummy_input,
             serialization_format="pickle",
-            registered_model_name=target_model_name,
+            registered_model_name=target_name,
             pip_requirements=[
                 "torch",
                 "torchvision",
                 "cloudpickle",
             ],
         )
+
+    def register_checkpoint(
+        self,
+        model: Any,
+        best_weights_path: Path,
+        input_shape: tuple[int, ...],
+        device: str,
+    ) -> None:
+        if not mlflow.active_run():
+            return
+
+        model.load_state_dict(
+            torch.load(best_weights_path, map_location=device, weights_only=True)
+        )
+        model.eval()
+
+        dummy_input = torch.randn(input_shape).to(device)
+        with torch.no_grad():
+            dummy_output = model(dummy_input)
+
+        self.log_model(
+            dummy_input=dummy_input.detach().cpu().numpy(),
+            dummy_output=dummy_output.detach().cpu().numpy(),
+            model=model,
+        )
+
+    def log_checkpoint_artifact(
+        self,
+        checkpoint_path: Path,
+        artifact_subdir: str = "checkpoints",
+    ) -> None:
+        """Logs file raw .pth in MLflow artifacts."""
+        if not mlflow.active_run():
+            return
+
+        mlflow.log_artifact(
+            local_path=str(checkpoint_path),
+            artifact_path=artifact_subdir,
+        )
+
+    def log_pipeline_metadata(
+        self,
+        idx_to_class: dict[str, str],
+        tags: dict[str, str],
+        params: dict[str, Any],
+        config_dict: dict[str, Any],
+    ) -> None:
+        """Logs metadata and configuration."""
+        if not mlflow.active_run():
+            return
+
+        mlflow.log_dict(idx_to_class, "classes_mapping.json")
+        mlflow.set_tags(tags)
+        mlflow.log_params(params)
+        mlflow.log_dict(config_dict, "run_config.json")
