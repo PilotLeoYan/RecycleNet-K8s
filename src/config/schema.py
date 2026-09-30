@@ -96,7 +96,7 @@ class ReproducibilityConfig(BaseModel):
         numpy_seed: Seed for NumPy pseudorandom number generators.
         torch_seed: Seed for PyTorch CPU and CUDA random number generators.
         deterministic: Whether to enforce deterministic algorithms in cuDNN and PyTorch.
-        warn_only: Whether to warn instead of raising an exception when deterministic=True.
+        warn_only: Whether to warn instead raise an exception when deterministic=True.
     """
 
     random_seed: int = 42
