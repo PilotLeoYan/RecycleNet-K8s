@@ -1,5 +1,6 @@
 """Training loop execution, validation monitoring, early stopping, and checkpointing."""
 
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -21,7 +22,6 @@ class ModelTrainer:
     """Orchestrate model training, validation, early stopping, and tracking.
 
     Attributes:
-        model: PyTorch model being trained.
         train_loader: Training DataLoader.
         val_loader: Validation DataLoader.
         criterion: Loss function module.
@@ -32,7 +32,6 @@ class ModelTrainer:
 
     def __init__(
         self,
-        model: nn.Module,
         train_loader: DataLoader,
         val_loader: DataLoader,
         criterion: nn.Module,
@@ -43,7 +42,6 @@ class ModelTrainer:
         """Initialize ModelTrainer with training dependencies and target device.
 
         Args:
-            model: PyTorch neural network to train.
             train_loader: DataLoader providing training mini-batches.
             val_loader: DataLoader providing validation mini-batches.
             criterion: Loss function module (e.g. CrossEntropyLoss).
@@ -51,29 +49,30 @@ class ModelTrainer:
             device: Target torch device or device string ('cuda', 'cpu').
             logmodel: Optional MLflow logging helper.
         """
-        self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.criterion = criterion
         self.optimizer = optimizer
         self.device = torch.device(device) if isinstance(device, str) else device
         self.logmodel = logmodel
-        self.model.to(self.device)
 
-    def _train_step(self) -> float:
+    def _train_step(self, model: torch.nn.Module) -> float:
         """Execute a single training epoch across all mini-batches in train_loader.
+
+        Args:
+            model: PyTorch neural network being trained.
 
         Returns:
             float: Average training loss across all samples in the epoch.
         """
-        self.model.train()
+        model.train()
         running_loss = 0.0
 
         for batch_x, batch_y in self.train_loader:
             batch_x = batch_x.to(self.device, non_blocking=True)
             batch_y = batch_y.to(self.device, non_blocking=True)
 
-            y_pred = self.model(batch_x)
+            y_pred = model(batch_x)
             loss = self.criterion(y_pred, batch_y)
 
             self.optimizer.zero_grad()
@@ -86,14 +85,17 @@ class ModelTrainer:
         return avg_loss  # type: ignore
 
     @torch.inference_mode()
-    def _valid_step(self) -> tuple[float, dict[str, float]]:
+    def _valid_step(self, model: torch.nn.Module) -> tuple[float, dict[str, float]]:
         """Execute a validation pass over val_loader computing loss and metrics.
+
+        Args:
+            model: PyTorch model being evaluated.
 
         Returns:
             tuple[float, dict[str, float]]: Average validation loss and computed
                 metrics dictionary.
         """
-        self.model.eval()
+        model.eval()
         running_vloss = 0.0
 
         batchs_predictions: list[np.ndarray] = []
@@ -103,7 +105,7 @@ class ModelTrainer:
             vbatch_x = vbatch_x.to(self.device, non_blocking=True)
             vbatch_y = vbatch_y.to(self.device, non_blocking=True)
 
-            vy_pred = self.model(vbatch_x)
+            vy_pred = model(vbatch_x)
             vloss = self.criterion(vy_pred, vbatch_y)
 
             running_vloss += vloss.item() * vbatch_y.size(0)
@@ -117,55 +119,31 @@ class ModelTrainer:
         metrics = evals(np.array(batchs_labels), np.array(batchs_predictions))
         return avg_loss_v, metrics  # type: ignore
 
-    def _save_weights(
-        self, run_id: str | int, weights_path: Path, is_best: bool = False
-    ) -> Path:
-        """Save current model weights (state dict) to the specified path.
-
-        Args:
-            run_id: Unique identifier for the training run.
-            weights_path: Directory path where weights will be stored.
-            is_best: Whether this checkpoint represents the best validation loss so far.
-
-        Returns:
-            Path: Full filepath of the saved .pth weights checkpoint.
-        """
-        if is_best:
-            path = weights_path / Path(f"best-{run_id}.pth")
-        else:
-            path = weights_path / Path(f"{run_id}.pth")
-
-        weights_path.mkdir(parents=True, exist_ok=True)
-
-        torch.save(
-            self.model.state_dict(),
-            path,
-        )
-        return path
-
     def fit(
-        self, run_id: int | str, epochs: int, weights_path: str, patience: int = 3
-    ) -> Path:
+        self,
+        model: torch.nn.Module,
+        epochs: int,
+        patience: int = 3,
+    ) -> torch.nn.Module:
         """Run the complete training and validation cycle with early stopping.
 
         Args:
-            run_id: MLflow tracking ID.
+            model: PyTorch neural network to train.
             epochs: Maximum number of training epochs to execute.
-            weights_path: Destination directory string to save checkpoints.
             patience: Number of epochs without improvement before early stopping.
 
         Returns:
-            Path: Path to the best saved model weights checkpoint.
+            torch.nn.Module: The trained model restored to its optimal weights.
         """
-        path = Path(weights_path)
-
         best_loss = float("inf")
         epochs_no_improve = 0
-        best_path = None
+
+        model.to(self.device)
+        best_state = copy.deepcopy(model.state_dict())
 
         for epoch in range(epochs):
-            train_loss = self._train_step()
-            valid_loss, valid_metrics = self._valid_step()
+            train_loss = self._train_step(model)
+            valid_loss, valid_metrics = self._valid_step(model)
 
             if self.logmodel is not None:
                 self.logmodel.log_epoch(
@@ -180,7 +158,9 @@ class ModelTrainer:
                 new_best = True
                 best_loss = valid_loss
                 epochs_no_improve = 0
-                best_path = self._save_weights(run_id, path, True)
+                # warning, if the model is too big
+                # maybe can cause Out of Memory
+                best_state = copy.deepcopy(model.state_dict())
 
             logger.info(
                 "epoch: %i, loss: %.4f, v_loss: %.4f%s",
@@ -197,7 +177,5 @@ class ModelTrainer:
             if epochs_no_improve >= patience:
                 break
 
-        if best_path is None:
-            best_path = self._save_weights(run_id, path, False)
-
-        return best_path
+        model.load_state_dict(best_state)
+        return model

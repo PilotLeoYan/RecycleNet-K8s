@@ -53,7 +53,6 @@ def train_eval_trial(
     )
 
     trainer = ModelTrainer(
-        model=model,
         train_loader=train_loader,
         val_loader=valid_loader,
         criterion=criterion,
@@ -63,8 +62,8 @@ def train_eval_trial(
     )
 
     for _ in range(config["max_epochs"]):
-        loss = trainer._train_step()
-        vloss, metrics = trainer._valid_step()
+        loss = trainer._train_step(model)
+        vloss, metrics = trainer._valid_step(model)
         tune.report(
             {
                 "train_loss": loss,

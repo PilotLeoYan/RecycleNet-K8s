@@ -5,14 +5,13 @@ import mlflow
 import mlflow.pytorch
 import numpy as np
 import pytest
-import torch
 from torch import nn
 
 from src.components.log_model import LogModel
 from src.config.schema import TrackingConfig
 
 
-def test_log_model_no_active_run(tmp_path: Path) -> None:
+def test_log_model_no_active_run() -> None:
     logger_model = LogModel()
 
     # When no active run exists, methods should return safely without raising errors
@@ -45,9 +44,6 @@ def test_log_model_no_active_run(tmp_path: Path) -> None:
     model = nn.Linear(32, 2)
     logger_model.log_model(dummy_input, dummy_output, model)
 
-    ckpt_path = tmp_path / "weights.pth"
-    torch.save(model.state_dict(), ckpt_path)
-    logger_model.log_checkpoint_artifact(ckpt_path)
     logger_model.log_pipeline_metadata(
         idx_to_class={"0": "class_0"},
         tags={"env": "test"},
@@ -56,9 +52,7 @@ def test_log_model_no_active_run(tmp_path: Path) -> None:
     )
     logger_model.register_checkpoint(
         model=model,
-        best_weights_path=ckpt_path,
         input_shape=(1, 3, 32, 32),
-        device="cpu",
     )
 
 
@@ -171,25 +165,6 @@ def test_start_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     mlflow.end_run()
 
 
-def test_log_checkpoint_artifact(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("MLFLOW_ALLOW_FILE_STORE", "true")
-    db_path = tmp_path / "mlflow.db"
-    config = TrackingConfig(
-        tracking_uri=f"sqlite:///{db_path}",
-        experiment_name="test_artifact_exp",
-    )
-    logger = LogModel(config=config)
-
-    ckpt_file = tmp_path / "checkpoint.pth"
-    ckpt_file.write_text("weights_data")
-
-    # With active run
-    with logger.start_run():
-        logger.log_checkpoint_artifact(ckpt_file, artifact_subdir="test_ckpts")
-
-
 def test_log_pipeline_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MLFLOW_ALLOW_FILE_STORE", "true")
     db_path = tmp_path / "mlflow.db"
@@ -219,8 +194,6 @@ def test_register_checkpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     logger = LogModel(config=config)
 
     model = nn.Linear(10, 2)
-    weights_path = tmp_path / "best_model.pth"
-    torch.save(model.state_dict(), weights_path)
 
     captured_kwargs: dict[str, object] = {}
 
@@ -232,9 +205,7 @@ def test_register_checkpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     with logger.start_run():
         logger.register_checkpoint(
             model=model,
-            best_weights_path=weights_path,
             input_shape=(1, 10),
-            device="cpu",
         )
 
     assert "pytorch_model" in captured_kwargs

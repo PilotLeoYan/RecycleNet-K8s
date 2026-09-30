@@ -1,7 +1,6 @@
 """MLflow tracking integration for logging metrics, artifacts, and PyTorch models."""
 
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import mlflow
@@ -144,46 +143,29 @@ class LogModel:
 
     def register_checkpoint(
         self,
-        model: Any,
-        best_weights_path: Path,
+        model: torch.nn.Module,
         input_shape: tuple[int, ...],
-        device: str,
     ) -> None:
-        if not mlflow.active_run():
-            return
-
-        model.load_state_dict(
-            torch.load(best_weights_path, map_location=device, weights_only=True)
-        )
-        model.eval()
-
-        dummy_input = torch.randn(input_shape).to(device)
-        with torch.no_grad():
-            dummy_output = model(dummy_input)
-
-        self.log_model(
-            dummy_input=dummy_input.detach().cpu().numpy(),
-            dummy_output=dummy_output.detach().cpu().numpy(),
-            model=model,
-        )
-
-    def log_checkpoint_artifact(
-        self,
-        checkpoint_path: Path,
-        artifact_subdir: str = "checkpoints",
-    ) -> None:
-        """Log raw .pth checkpoint file to MLflow artifacts.
+        """Register the trained PyTorch model checkpoint in MLflow Model Registry.
 
         Args:
-            checkpoint_path: Path to the model weights checkpoint file.
-            artifact_subdir: Destination subdirectory within MLflow artifacts.
+            model: PyTorch model instance to log and register.
+            input_shape: Input tensor shape tuple for dummy input inference.
         """
         if not mlflow.active_run():
             return
 
-        mlflow.log_artifact(
-            local_path=str(checkpoint_path),
-            artifact_path=artifact_subdir,
+        model.to("cpu")
+        model.eval()
+
+        dummy_input = torch.randn(input_shape).to("cpu")
+        with torch.no_grad():
+            dummy_output = model(dummy_input)
+
+        self.log_model(
+            dummy_input=dummy_input.detach().numpy(),
+            dummy_output=dummy_output.detach().numpy(),
+            model=model,
         )
 
     def log_pipeline_metadata(

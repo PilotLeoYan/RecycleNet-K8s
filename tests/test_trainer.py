@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -23,7 +21,6 @@ def test_trainer_train_step() -> None:
     criterion = nn.CrossEntropyLoss()
 
     trainer = ModelTrainer(
-        model=model,
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
@@ -31,7 +28,7 @@ def test_trainer_train_step() -> None:
         device="cpu",
     )
 
-    loss = trainer._train_step()
+    loss = trainer._train_step(model)
     assert isinstance(loss, float)
     assert loss > 0.0
 
@@ -52,7 +49,6 @@ def test_trainer_valid_step() -> None:
     criterion = nn.CrossEntropyLoss()
 
     trainer = ModelTrainer(
-        model=model,
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
@@ -60,13 +56,13 @@ def test_trainer_valid_step() -> None:
         device="cpu",
     )
 
-    vloss, metrics = trainer._valid_step()
+    vloss, metrics = trainer._valid_step(model)
     assert isinstance(vloss, float)
     assert "accuracy" in metrics
     assert "f1_score" in metrics
 
 
-def test_trainer_fit(tmp_path: Path) -> None:
+def test_trainer_fit() -> None:
     model = nn.Sequential(
         nn.Flatten(),
         nn.Linear(3 * 16 * 16, 2),
@@ -82,7 +78,6 @@ def test_trainer_fit(tmp_path: Path) -> None:
     criterion = nn.CrossEntropyLoss()
 
     trainer = ModelTrainer(
-        model=model,
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
@@ -90,13 +85,13 @@ def test_trainer_fit(tmp_path: Path) -> None:
         device="cpu",
     )
 
-    weights_dir = tmp_path / "weights"
-    saved_path = trainer.fit(0, epochs=2, weights_path=str(weights_dir), patience=2)
+    trained_model = trainer.fit(model, epochs=2, patience=2)
 
-    assert saved_path.exists()
+    assert isinstance(trained_model, torch.nn.Module)
+    assert any(p.requires_grad for p in trained_model.parameters())
 
 
-def test_trainer_with_logmodel(tmp_path: Path) -> None:
+def test_trainer_with_logmodel() -> None:
     model = nn.Sequential(
         nn.Flatten(),
         nn.Linear(3 * 16 * 16, 2),
@@ -133,7 +128,6 @@ def test_trainer_with_logmodel(tmp_path: Path) -> None:
     mock_logmodel = MockLogModel()
 
     trainer = ModelTrainer(
-        model=model,
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
@@ -144,10 +138,9 @@ def test_trainer_with_logmodel(tmp_path: Path) -> None:
 
     assert trainer.logmodel is not None
 
-    weights_dir = tmp_path / "weights"
-    saved_path = trainer.fit(0, epochs=2, weights_path=str(weights_dir), patience=2)
+    trained_model = trainer.fit(model, epochs=2, patience=2)
 
-    assert saved_path.exists()
+    assert isinstance(trained_model, torch.nn.Module)
     assert len(logged_epochs) == 2
     assert logged_epochs[0]["step"] == 0
     assert logged_epochs[1]["step"] == 1
