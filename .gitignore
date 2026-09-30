@@ -15,7 +15,6 @@ site/
 notes/
 trashnet/
 data/
-artifacts/
 
 # mlflow
 mlruns/

@@ -134,7 +134,6 @@ class TrainingConfig(BaseModel):
     learning_rate: float = Field(default=1e-3, gt=0)
     weight_decay: float = Field(default=1e-4, ge=0.0)
     device: str = "cuda"
-    checkpoints_dir: Path = Field(default=Path("artifacts/checkpoints"))
 
     def __str__(self) -> str:
         return f"""TrainingConfig:

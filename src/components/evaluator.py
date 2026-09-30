@@ -1,10 +1,7 @@
 """Model evaluation component for assessing performance on the test dataset split."""
 
-from pathlib import Path
-
 import numpy as np
 import torch
-from torch import nn
 from torch.utils.data import DataLoader
 
 from src.components.log_model import LogModel
@@ -17,51 +14,44 @@ class Evaluator:
     """Evaluate a trained model checkpoint against the test dataset and log results.
 
     Attributes:
-        model: PyTorch model architecture.
-        weights_path: Path to the trained model weights checkpoint (.pth).
         test_loader: DataLoader providing the test data partition.
         device: Computation device used for inference.
-        log_model: MLflow logging helper.
+        logmodel: Optional MLflow logging helper.
     """
 
     def __init__(
         self,
-        model: nn.Module,
-        weights_path: Path | str,
         test_loader: DataLoader,
         device: torch.device | str,
+        logmodel: LogModel | None = None,
     ):
-        """Initialize Evaluator with model, weights, DataLoader, and device.
+        """Initialize Evaluator with test DataLoader and target device.
+
+        Args:
+            test_loader: DataLoader for the test partition.
+            device: Target torch device or device string ('cuda', 'cpu').
+            logmodel: Optional MLflow logging helper.
+        """
+        self.test_loader = test_loader
+        self.device = torch.device(device) if isinstance(device, str) else device
+        self.logmodel = logmodel
+
+    @torch.inference_mode()
+    def _test_model(
+        self,
+        model: torch.nn.Module,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Run batch inference on the test dataset to collect predictions.
 
         Args:
             model: PyTorch model to evaluate.
-            weights_path: Path or string to the checkpoint .pth file.
-            test_loader: DataLoader for the test partition.
-            device: Target torch device or device string ('cuda', 'cpu').
-        """
-        self.model = model
-        self.weights_path = (
-            Path(weights_path) if isinstance(weights_path, str) else weights_path
-        )
-        self.test_loader = test_loader
-        self.device = torch.device(device) if isinstance(device, str) else device
-
-        self.log_model: LogModel = LogModel()
-        # move model to the same device
-        self.model.to(self.device)
-
-    @torch.inference_mode()
-    def _test_model(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Run batch inference on the test dataset to collect predictions.
 
         Returns:
             tuple[np.ndarray, np.ndarray, np.ndarray]: Arrays of predicted class
                 labels, predicted probabilities, and ground truth labels.
         """
-        self.model.load_state_dict(
-            torch.load(self.weights_path, map_location=self.device, weights_only=True)
-        )
-        self.model.eval()
+        model.to(self.device)
+        model.eval()
 
         batchs_predictions: list[np.ndarray] = []
         batchs_probas: list[np.ndarray] = []
@@ -71,7 +61,7 @@ class Evaluator:
             batch_x = batch_x.to(self.device, non_blocking=True)
             batch_y = batch_y.to(self.device, non_blocking=True)
 
-            logits = self.model(batch_x)
+            logits = model(batch_x)
 
             # convert logits to predictions
             batch_predictions = torch.argmax(logits, dim=1)
@@ -89,9 +79,16 @@ class Evaluator:
 
         return predics, probas, labels
 
-    def evaluate(self) -> None:
-        """Compute test metrics, generate confusion matrix, and log to MLflow."""
-        predictions, probas, labels = self._test_model()
+    def evaluate(
+        self,
+        model: torch.nn.Module,
+    ) -> None:
+        """Compute test metrics, generate confusion matrix, and log to MLflow.
+
+        Args:
+            model: PyTorch model to evaluate.
+        """
+        predictions, probas, labels = self._test_model(model)
 
         metrics = evals(labels, predictions)
         roc = calculate_roc_auc(labels, probas)
@@ -99,4 +96,5 @@ class Evaluator:
         cm_disp = confusion(labels, predictions)
         fig_cm = cm_disp.plot(cmap=CMAP).figure_
 
-        self.log_model.log_test(roc, metrics, fig_cm)
+        if self.logmodel is not None:
+            self.logmodel.log_test(roc, metrics, fig_cm)

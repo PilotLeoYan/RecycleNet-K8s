@@ -103,7 +103,6 @@ class TrainPipeline:
 
         try:
             trainer = ModelTrainer(
-                model=model,
                 train_loader=train_loader,
                 val_loader=valid_loader,
                 criterion=criterion,
@@ -114,13 +113,18 @@ class TrainPipeline:
         except Exception as e:
             raise RecycleNetException("Error initialising the trainer", e) from e
 
-        logger.info("Training...")
+        try:
+            evaluator = Evaluator(
+                test_loader=test_loader,
+                device=self.config.training.device,
+                logmodel=self.logmodel,
+            )
+        except Exception as e:
+            raise RecycleNetException("Error initialising the evaluator", e) from e
+
+        logger.info("Starting train pipeline...")
 
         self.logmodel.set_experiment_tracking()
-
-        checkpoints_dir = self.config.training.checkpoints_dir
-        checkpoints_dir.mkdir(parents=True, exist_ok=True)
-
         pipeline_tags = self.config.tracking.tags.copy()
         pipeline_tags["hardware"] = self.config.training.device
 
@@ -147,28 +151,20 @@ class TrainPipeline:
                     config_dict=self.config.model_dump(mode="json"),
                 )
 
-                best_path = trainer.fit(
-                    run_id=active_run.info.run_id,
+                logger.info("Running training...")
+                model = trainer.fit(
+                    model=model,
                     epochs=self.config.training.epochs,
-                    weights_path=str(checkpoints_dir),
                     patience=self.config.training.patience,
                 )
-                self.logmodel.register_checkpoint(
-                    model=model,
-                    best_weights_path=best_path,
-                    input_shape=(1, *valid_loader.dataset[0][0].shape),
-                    device=self.config.training.device,
-                )
-                self.logmodel.log_checkpoint_artifact(best_path)
 
                 logger.info("Running test evaluation...")
-                evaluator = Evaluator(
+                evaluator.evaluate(model)
+
+                self.logmodel.register_checkpoint(
                     model=model,
-                    weights_path=best_path,
-                    test_loader=test_loader,
-                    device=self.config.training.device,
+                    input_shape=(1, *valid_loader.dataset[0][0].shape),
                 )
-                evaluator.evaluate()
 
             except Exception as e:
                 raise RecycleNetException(
