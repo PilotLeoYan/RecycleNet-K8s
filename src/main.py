@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 
 def main() -> None:
-    """CLI entrypoint for launching the RecycleNet training pipeline."""
+    """Execute the CLI entrypoint for launching RecycleNet pipeline workflows."""
     parser = build_parser()
     args = parser.parse_args()
 

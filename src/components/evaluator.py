@@ -14,7 +14,7 @@ CMAP = "Blues"
 
 
 class Evaluator:
-    """Evaluates a trained model checkpoint against the test dataset and logs results.
+    """Evaluate a trained model checkpoint against the test dataset and log results.
 
     Attributes:
         model: PyTorch model architecture.
@@ -31,7 +31,7 @@ class Evaluator:
         test_loader: DataLoader,
         device: torch.device | str,
     ):
-        """Initializes Evaluator with model, weights, DataLoader, and device.
+        """Initialize Evaluator with model, weights, DataLoader, and device.
 
         Args:
             model: PyTorch model to evaluate.
@@ -52,7 +52,7 @@ class Evaluator:
 
     @torch.inference_mode()
     def _test_model(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Runs batch inference on the test dataset to collect predictions.
+        """Run batch inference on the test dataset to collect predictions.
 
         Returns:
             tuple[np.ndarray, np.ndarray, np.ndarray]: Arrays of predicted class
@@ -90,7 +90,7 @@ class Evaluator:
         return predics, probas, labels
 
     def evaluate(self) -> None:
-        """Computes test metrics, generates confusion matrix, and logs to MLflow."""
+        """Compute test metrics, generate confusion matrix, and log to MLflow."""
         predictions, probas, labels = self._test_model()
 
         metrics = evals(labels, predictions)

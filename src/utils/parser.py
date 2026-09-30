@@ -3,10 +3,10 @@ from pathlib import Path
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build command-line argument parse with subcommands for each stage.
+    """Build command-line argument parser with subcommands for each stage.
 
     Returns:
-        Configured ArgumentParser instance.
+        argparse.ArgumentParser: Configured ArgumentParser instance.
     """
     parser = argparse.ArgumentParser(
         prog="recyclenet",

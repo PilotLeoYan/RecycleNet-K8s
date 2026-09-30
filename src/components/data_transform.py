@@ -14,7 +14,7 @@ SampleType = tuple[torch.Tensor, int]
 
 
 def seed_worker(_worker_id: int) -> None:
-    """Sets random seeds for NumPy and Python random in DataLoader worker processes.
+    """Set random seeds for NumPy and Python random in DataLoader worker processes.
 
     Ensures deterministic augmentations and operations across multi-process data
     loading workers by reseeding external libraries using PyTorch's generated
@@ -29,7 +29,7 @@ def seed_worker(_worker_id: int) -> None:
 
 
 class RecycleDataset(Dataset[SampleType]):
-    """PyTorch Dataset wrapper that applies torchvision v2 transforms per sample.
+    """Wrap a PyTorch dataset partition to apply torchvision v2 transforms per sample.
 
     Attributes:
         data_source: Underlying dataset partition or subset containing raw samples.
@@ -41,7 +41,7 @@ class RecycleDataset(Dataset[SampleType]):
         data_source: Dataset[SampleType],
         transform: v2.Compose | None = None,
     ) -> None:
-        """Initializes RecycleDataset with a data source and optional transform.
+        """Initialize RecycleDataset with a data source and optional transform.
 
         Args:
             data_source: Underlying dataset or subset partition.
@@ -51,7 +51,7 @@ class RecycleDataset(Dataset[SampleType]):
         self.transform = transform
 
     def __len__(self) -> int:
-        """Returns the total number of samples in the dataset partition.
+        """Return the total number of samples in the dataset partition.
 
         Returns:
             int: Number of samples in the underlying data source.
@@ -66,7 +66,7 @@ class RecycleDataset(Dataset[SampleType]):
         )
 
     def __getitem__(self, idx: int) -> SampleType:
-        """Retrieves and transforms the image tensor and class label at the index.
+        """Retrieve and transform the image tensor and class label at the index.
 
         Args:
             idx: Index of the sample to retrieve.
@@ -83,7 +83,7 @@ class RecycleDataset(Dataset[SampleType]):
 
 
 class DataTransformation:
-    """Manages torchvision preprocessing pipelines, dataset splits, and DataLoaders.
+    """Manage torchvision preprocessing pipelines, dataset splits, and DataLoaders.
 
     Attributes:
         config: Transformation and DataLoader configuration parameters.
@@ -97,7 +97,7 @@ class DataTransformation:
         config: TransformationConfig,
         seed: int | None = None,
     ) -> None:
-        """Initializes DataTransformation with configuration and optional seed.
+        """Initialize DataTransformation with configuration and optional seed.
 
         Args:
             config: Data transformation and loading configuration.
@@ -109,7 +109,7 @@ class DataTransformation:
         self.class_to_idx: dict[str, int] = {}
 
     def _get_generator(self, seed: int | None = None) -> torch.Generator:
-        """Creates a seeded PyTorch Generator for reproducible operations.
+        """Create a seeded PyTorch Generator for reproducible operations.
 
         Resolves the effective seed using a cascade: explicit seed argument,
         then self.seed, falling back to torch.initial_seed().
@@ -130,7 +130,7 @@ class DataTransformation:
         return generator
 
     def _get_transformations(self) -> tuple[v2.Compose, v2.Compose]:
-        """Constructs torchvision v2 transform pipelines for training and evaluation.
+        """Construct torchvision v2 transform pipelines for training and evaluation.
 
         Returns:
             tuple[v2.Compose, v2.Compose]: Training transform (with data augmentation)
@@ -173,7 +173,7 @@ class DataTransformation:
         dataset: Dataset[SampleType],
         is_train: bool,
     ) -> DataLoader[SampleType]:
-        """Wraps a dataset partition into a configured PyTorch DataLoader.
+        """Wrap a dataset partition into a configured PyTorch DataLoader.
 
         Args:
             dataset: Dataset or RecycleDataset instance to load.
@@ -199,7 +199,7 @@ class DataTransformation:
         self,
         raw_data_dir: Path,
     ) -> tuple[DataLoader[SampleType], DataLoader[SampleType], DataLoader[SampleType]]:
-        """Builds and returns DataLoaders for train, validation, and test partitions.
+        """Build and return DataLoaders for train, validation, and test partitions.
 
         Discovers dataset classes, generates reproducible splits, binds transformations,
         and constructs corresponding DataLoaders.
