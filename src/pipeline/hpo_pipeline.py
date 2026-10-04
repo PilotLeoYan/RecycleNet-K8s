@@ -4,6 +4,7 @@ from typing import Any
 import torch
 from ray import tune
 from ray.air.integrations.mlflow import MLflowLoggerCallback
+from ray.tune import FailureConfig
 from ray.tune.schedulers import ASHAScheduler
 from ray.tune.search.optuna import OptunaSearch
 
@@ -23,61 +24,62 @@ def train_eval_trial(
     data_dir: Path,
     app_config: AppConfig,
 ) -> None:
-    make_reproducibility(app_config.reproducibility)
+    try:
+        make_reproducibility(app_config.reproducibility)
 
-    trans_config = TransformationConfig(
-        image_size=app_config.transformation.image_size,
-        image_mean=app_config.transformation.image_mean,
-        image_std=app_config.transformation.image_std,
-        random_h_flip=app_config.transformation.random_h_flip,
-        random_rotation=app_config.transformation.random_rotation,
-        train_split=app_config.transformation.train_split,
-        eval_split=app_config.transformation.eval_split,
-        test_split=app_config.transformation.test_split,
-        batch_size=config["batch_size"],
-        num_workers=config["dataloader_n_workers"],
-        pin_memory=app_config.transformation.pin_memory,
-        seed=app_config.reproducibility.torch_seed,
-    )
-    transformation = DataTransformation(
-        trans_config, seed=app_config.reproducibility.torch_seed
-    )
-    train_loader, valid_loader, _ = transformation.get_dataloaders(data_dir)
+        trans_config = TransformationConfig(
+            image_size=app_config.transformation.image_size,
+            image_mean=app_config.transformation.image_mean,
+            image_std=app_config.transformation.image_std,
+            random_h_flip=app_config.transformation.random_h_flip,
+            random_rotation=app_config.transformation.random_rotation,
+            train_split=app_config.transformation.train_split,
+            eval_split=app_config.transformation.eval_split,
+            test_split=app_config.transformation.test_split,
+            batch_size=config["batch_size"],
+            num_workers=config["dataloader_n_workers"],
+            pin_memory=app_config.transformation.pin_memory,
+            seed=app_config.reproducibility.torch_seed,
+        )
+        transformation = DataTransformation(
+            trans_config, seed=app_config.reproducibility.torch_seed
+        )
+        train_loader, valid_loader, _ = transformation.get_dataloaders(data_dir)
 
-    model = build_mobilenet_v3(len(transformation.classes))
-    criterion = get_criterion()
-    optimizer = get_optimizer(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        learning_rate=config["learning_rate"],
-        weight_decay=config["weight_decay"],
-    )
-
-    trainer = ModelTrainer(
-        train_loader=train_loader,
-        val_loader=valid_loader,
-        criterion=criterion,
-        optimizer=optimizer,
-        device=config["device"],
-        logmodel=None,
-    )
-
-    for _ in range(config["max_epochs"]):
-        loss = trainer._train_step(model)
-        vloss, metrics = trainer._valid_step(model)
-        tune.report(
-            {
-                "train_loss": loss,
-                "val_loss": vloss,
-                "val_accuracy": metrics["accuracy"],
-            }
+        model = build_mobilenet_v3(len(transformation.classes))
+        criterion = get_criterion()
+        optimizer = get_optimizer(
+            filter(lambda p: p.requires_grad, model.parameters()),
+            learning_rate=config["learning_rate"],
+            weight_decay=config["weight_decay"],
         )
 
-    del trainer, model, train_loader, valid_loader, criterion, optimizer
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-    import gc
+        trainer = ModelTrainer(
+            train_loader=train_loader,
+            val_loader=valid_loader,
+            criterion=criterion,
+            optimizer=optimizer,
+            device=config["device"],
+            logmodel=None,
+        )
 
-    gc.collect()
+        model = model.to(config["device"])
+        for _ in range(config["max_epochs"]):
+            loss = trainer._train_step(model)
+            vloss, metrics = trainer._valid_step(model)
+            tune.report(
+                {
+                    "train_loss": loss,
+                    "val_loss": vloss,
+                    "val_accuracy": metrics["accuracy"],
+                }
+            )
+    finally:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        import gc
+
+        gc.collect()
 
 
 class HPOPipeline:
@@ -164,6 +166,10 @@ class HPOPipeline:
 
             run_config = tune.RunConfig(
                 name=self.config.hpo.experiment_name,
+                failure_config=FailureConfig(
+                    max_failures=0,  # 0 retries if the worker fail
+                    fail_fast=True,  # stop the scheduler at first trial error
+                ),
                 callbacks=[
                     MLflowLoggerCallback(
                         tracking_uri=self.config.tracking.tracking_uri,
@@ -187,8 +193,35 @@ class HPOPipeline:
             )
 
             results = tuner.fit()
-            best_result = results.get_best_result(metric="val_loss", mode="min")
 
+            if results.errors:
+                logger.error(
+                    "Ray Tune HPO aborted: detected %d trial(s) with errors.",
+                    results.num_errors,
+                )
+
+                for error in results.errors:
+                    root_cause = getattr(error, "cause", error)
+                    err_type = type(root_cause).__name__
+                    err_msg = str(root_cause)
+
+                    tb_lines = str(error).strip().splitlines()
+                    tail_tb = "\n    ".join(tb_lines[-8:])
+
+                    logger.error(
+                        "Trial failed with %s: %s\n"
+                        "  Traceback snippet (last lines):\n    %s",
+                        err_type,
+                        err_msg,
+                        tail_tb,
+                    )
+
+                raise RecycleNetException(
+                    f"Ray Tune HPO aborted due to failures in "
+                    f"{len(results.errors)} trial(s)."
+                )
+
+            best_result = results.get_best_result(metric="val_loss", mode="min")
             logger.info("Ray Tune HPO search completed successfully.")
             logger.info("Best trial config: %s", best_result.config)
             logger.info("Best trial metrics: %s", best_result.metrics)
