@@ -13,13 +13,13 @@ theme:
       accent: deep orange
       toggle:
         icon: material/brightness-7
-        name: Cambiar a modo oscuro
+        name: Switch to dark mode
     - scheme: slate
       primary: teal
       accent: deep orange
       toggle:
         icon: material/brightness-4
-        name: Cambiar a modo claro
+        name: Switch to light mode
   features:
     - navigation.instant # Ultra-fast SPA-style charging
     - navigation.tabs # Top bar with tabs

@@ -15,4 +15,4 @@ Diagnostic logging, custom formatters, and exception management for the RecycleN
 ---
 
 ## Exceptions
-::: src.exception
+::: src.utils.exception
