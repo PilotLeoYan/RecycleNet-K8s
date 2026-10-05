@@ -1,0 +1,99 @@
+name: PR metadata validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+      - labeled
+      - unlabeled
+      - ready_for_review
+
+# This check reads only the pull request event payload; it needs no token permissions.
+permissions: {}
+
+jobs:
+  validate-pr-metadata:
+    name: Validate PR body and labels
+    runs-on: ubuntu-latest
+    env:
+      PR_BODY: ${{ github.event.pull_request.body || '' }}
+      PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+
+    steps:
+      - name: Check required sections and classification label
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          body = os.environ.get("PR_BODY", "")
+          labels = set(json.loads(os.environ.get("PR_LABELS", "[]")))
+          allowed_labels = {
+              "bug",
+              "enhancement",
+              "documentation",
+              "ci",
+              "dependencies",
+              "security",
+          }
+          required_sections = {
+              "context",
+              "changes",
+              "validation and evidence",
+              "risk and follow-up",
+          }
+          errors = []
+
+          if not labels.intersection(allowed_labels):
+              choices = ", ".join(sorted(allowed_labels))
+              errors.append(
+                  f"Add at least one classification label to the PR: {choices}."
+              )
+
+          # Ignore template guidance comments so an untouched template cannot pass.
+          visible_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+          headings = list(
+              re.finditer(r"(?im)^##\s+(.+?)\s*$", visible_body)
+          )
+          sections = {}
+          for index, heading in enumerate(headings):
+              name = heading.group(1).strip().lower()
+              end = headings[index + 1].start() if index + 1 < len(headings) else len(visible_body)
+              sections[name] = visible_body[heading.end():end]
+
+          missing_headings = required_sections.difference(sections)
+          if missing_headings:
+              errors.append(
+                  "Add these headings from the PR template: "
+                  + ", ".join(sorted(missing_headings))
+                  + "."
+              )
+
+          for section_name in sorted(required_sections.intersection(sections)):
+              content = sections[section_name]
+              # Remove template scaffolding and empty checklist/field prompts.
+              content = re.sub(r"(?im)^\s*Closes\s+#\s*$", "", content)
+              content = re.sub(r"(?im)^\s*-\s*\[[ xX]\].*$", "", content)
+              content = re.sub(r"(?im)^\s*[-*]\s*[^:\n]+:\s*$", "", content)
+              content = re.sub(r"(?m)^\s*[-*_]{3,}\s*$", "", content)
+              if not content.strip():
+                  errors.append(
+                      f"Add a short response under the '{section_name}' heading. "
+                      "Use 'None' if there is no risk or follow-up."
+                  )
+
+          if errors:
+              print("PR metadata validation failed:")
+              for error in errors:
+                  print(f"- {error}")
+              sys.exit(1)
+
+          print("PR body sections and classification label are present.")
+          PY
