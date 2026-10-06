@@ -24,11 +24,11 @@ build-backend = "hatchling.build"
 [project.optional-dependencies]
 cpu = [
     "torch>=2.13.0,<3.0.0",
-    "torchvision==0.29.0",
+    "torchvision==0.29.1",
 ]
 gpu = [
     "torch>=2.13.0,<3.0.0",
-    "torchvision==0.29.0+cu126",
+    "torchvision==0.29.1",
 ]
 
 [tool.uv]
