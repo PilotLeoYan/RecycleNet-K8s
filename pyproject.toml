@@ -7,10 +7,8 @@ authors = [
 ]
 requires-python = ">=3.14, <4.0.0"
 dependencies = [
-    "torch>=2.13.0,<3.0.0",
     "mlflow>=3.16.0,<4.0.0",
     "scikit-learn>=1.9.0,<2.0.0",
-    "torchvision==0.29.0",
     "numpy>=2.5.2,<3.0.0",
     "matplotlib>=3.11.1,<4.0.0",
     "pydantic-settings>=2.15.0",
@@ -19,14 +17,47 @@ dependencies = [
     "optuna>=5.0.0",
 ]
 
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project.optional-dependencies]
+cpu = [
+    "torch>=2.13.0,<3.0.0",
+    "torchvision==0.29.0",
+]
+gpu = [
+    "torch>=2.13.0,<3.0.0",
+    "torchvision==0.29.0+cu126",
+]
+
+[tool.uv]
+package = false
+override-dependencies = [
+    "cryptography>=50.0.0",
+    "gitpython>=3.1.60",
+]
+conflicts = [
+    [
+        {extra = "cpu"},
+        {extra = "gpu"},
+    ],
+]
+
 [tool.uv.sources]
-torch = [{ index = "pytorch-gpu" }]
-torchvision = [{ index = "pytorch-gpu" }]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-gpu", extra = "gpu" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-gpu", extra = "gpu" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-gpu"
@@ -42,6 +73,7 @@ dev = [
     "types-pyyaml>=6.0.12.20260815",
     "ipykernel>=7.3.0",
     "pillow>=12.3.0",
+    "bandit>=1.9.4",
 ]
 docs = [
     "mkdocs>=1.6.1",
@@ -72,13 +104,6 @@ explicit_package_bases = true
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-
-[tool.uv]
-package = false
-override-dependencies = [
-    "cryptography>=50.0.0",
-    "gitpython>=3.1.60",
-]
 
 [tool.bandit]
 # Folders to Exclude During Security Scans

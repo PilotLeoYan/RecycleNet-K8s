@@ -1,3 +1,5 @@
+# Monitor to find new CVEs daily
+
 name: Scheduled Security Audit
 
 on:
@@ -12,6 +14,7 @@ jobs:
   audit-dependency:
     name: Daily Dependency CVE Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 1
 
     steps:
       - name: Checkout repository
@@ -23,7 +26,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
-      # We don't need 'uv python install' ni 'uv sync',
+      # We don't need 'uv python install' nor 'uv sync',
       # we only need to check the Static dependency graph,
       # so instead install all dependencies, we only need to analyse uv.lock
       #- name: Set up Python
