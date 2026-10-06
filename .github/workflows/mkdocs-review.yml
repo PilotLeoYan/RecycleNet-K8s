@@ -14,7 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  mkdocs-check:
+    name: MKdocs Check
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
