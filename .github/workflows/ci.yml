@@ -25,6 +25,7 @@ jobs:
   pipeline:
     name: Lint, Security & Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -40,7 +41,7 @@ jobs:
         run: uv python install
 
       - name: Install dependencies
-        run: uv sync --frozen --all-groups
+        run: uv sync --frozen --all-groups --extra cpu
 
       - name: Check formatting (Ruff)
         run: uv run ruff format --check .
@@ -52,7 +53,7 @@ jobs:
         run: uv run mypy .
 
       - name: Run Bandit (Security Linter)
-        run: uvx bandit -r src/ -c pyproject.toml
+        run: uv run bandit -r src/ -c pyproject.toml
 
       - name: Run unit tests (Pytest)
         run: uv run pytest tests/ -v --durations=10
