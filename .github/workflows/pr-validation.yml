@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 1
     env:
       PR_BODY: ${{ github.event.pull_request.body || '' }}
+      PR_AUTHOR: ${{ github.event.pull_request.user.login || '' }}
       PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
 
     steps:
@@ -58,37 +59,39 @@ jobs:
                   f"Add at least one classification label to the PR: {choices}."
               )
 
-          # Ignore template guidance comments so an untouched template cannot pass.
-          visible_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
-          headings = list(
-              re.finditer(r"(?im)^##\s+(.+?)\s*$", visible_body)
-          )
-          sections = {}
-          for index, heading in enumerate(headings):
-              name = heading.group(1).strip().lower()
-              end = headings[index + 1].start() if index + 1 < len(headings) else len(visible_body)
-              sections[name] = visible_body[heading.end():end]
-
-          missing_headings = required_sections.difference(sections)
-          if missing_headings:
-              errors.append(
-                  "Add these headings from the PR template: "
-                  + ", ".join(sorted(missing_headings))
-                  + "."
+          # Dependabot uses release notes instead of the repository's PR template.
+          if os.environ.get("PR_AUTHOR") != "dependabot[bot]":
+              # Ignore template guidance comments so an untouched template cannot pass.
+              visible_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+              headings = list(
+                  re.finditer(r"(?im)^##\s+(.+?)\s*$", visible_body)
               )
+              sections = {}
+              for index, heading in enumerate(headings):
+                  name = heading.group(1).strip().lower()
+                  end = headings[index + 1].start() if index + 1 < len(headings) else len(visible_body)
+                  sections[name] = visible_body[heading.end():end]
 
-          for section_name in sorted(required_sections.intersection(sections)):
-              content = sections[section_name]
-              # Remove template scaffolding and empty checklist/field prompts.
-              content = re.sub(r"(?im)^\s*Closes\s+#\s*$", "", content)
-              content = re.sub(r"(?im)^\s*-\s*\[[ xX]\].*$", "", content)
-              content = re.sub(r"(?im)^\s*[-*]\s*[^:\n]+:\s*$", "", content)
-              content = re.sub(r"(?m)^\s*[-*_]{3,}\s*$", "", content)
-              if not content.strip():
+              missing_headings = required_sections.difference(sections)
+              if missing_headings:
                   errors.append(
-                      f"Add a short response under the '{section_name}' heading. "
-                      "Use 'None' if there is no risk or follow-up."
+                      "Add these headings from the PR template: "
+                      + ", ".join(sorted(missing_headings))
+                      + "."
                   )
+
+              for section_name in sorted(required_sections.intersection(sections)):
+                  content = sections[section_name]
+                  # Remove template scaffolding and empty checklist/field prompts.
+                  content = re.sub(r"(?im)^\s*Closes\s+#\s*$", "", content)
+                  content = re.sub(r"(?im)^\s*-\s*\[[ xX]\].*$", "", content)
+                  content = re.sub(r"(?im)^\s*[-*]\s*[^:\n]+:\s*$", "", content)
+                  content = re.sub(r"(?m)^\s*[-*_]{3,}\s*$", "", content)
+                  if not content.strip():
+                      errors.append(
+                          f"Add a short response under the '{section_name}' heading. "
+                          "Use 'None' if there is no risk or follow-up."
+                      )
 
           if errors:
               print("PR metadata validation failed:")
@@ -96,5 +99,5 @@ jobs:
                   print(f"- {error}")
               sys.exit(1)
 
-          print("PR body sections and classification label are present.")
+          print("PR metadata validation passed.")
           PY
