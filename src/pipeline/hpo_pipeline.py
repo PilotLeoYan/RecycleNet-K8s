@@ -13,6 +13,7 @@ from src.components.loss_functions import get_criterion
 from src.components.model import build_mobilenet_v3
 from src.components.optimizers import get_optimizer
 from src.config import AppConfig, TransformationConfig
+from src.pipeline.ray_resources import assign_ray_resources
 from src.pipeline.reproducibility import make_reproducibility
 from src.utils import RecycleNetException, get_logger
 
@@ -108,6 +109,20 @@ class HPOPipeline:
         logger.info("Initializing Ray Tune HPO pipeline...")
 
         try:
+            device, resources = assign_ray_resources(
+                self.config.hpo.device,
+                self.config.hpo.cpu_resources_per_trial,
+                self.config.hpo.gpu_resources_per_trial,
+            )
+
+            logger.info(
+                "HPO hardware resolved: effective_device=%s,"
+                "cpu_per_trial=%s, gpu_per_trial=%s",
+                device,
+                resources["cpu"],
+                resources["gpu"],
+            )
+
             param_space = {
                 "learning_rate": tune.loguniform(
                     self.config.hpo.learning_rate_range[0],
@@ -122,7 +137,7 @@ class HPOPipeline:
                 "max_epochs": self.config.hpo.max_epochs,
                 "grace_period": self.config.hpo.grace_period,
                 "dataloader_n_workers": self.config.hpo.dataloader_n_workers,
-                "device": self.config.hpo.device,
+                "device": device,
             }
 
             ingestion = DataIngestion(self.config.ingestion)
@@ -138,10 +153,7 @@ class HPOPipeline:
 
             tuner_resourcers = tune.with_resources(
                 tuner_parameters,
-                resources={
-                    "cpu": self.config.hpo.cpu_resources_per_trial,
-                    "gpu": self.config.hpo.gpu_resources_per_trial,
-                },
+                resources=resources,
             )
 
             scheduler = ASHAScheduler(

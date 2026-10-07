@@ -205,7 +205,10 @@ class HPOConfig(BaseModel):
     max_concurrent_trials: int = Field(default=2, ge=1)
     cpu_resources_per_trial: float = Field(default=2.0, ge=1.0)
     gpu_resources_per_trial: float = Field(default=0.5, ge=0.0)
-    device: str = Field(default="cpu")
+    device: str = Field(
+        default="auto",
+        description="Target execution device: 'auto' (detects CUDA), 'cuda' or 'cpu'.",
+    )
     experiment_name: str = Field(default="hpo_mobilenetv3_experiment")
 
 
