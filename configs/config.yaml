@@ -51,5 +51,5 @@ hpo:
   max_concurrent_trials: 2
   cpu_resources_per_trial: 2
   gpu_resources_per_trial: 0.5
-  device: "cuda"
+  device: "auto" # auto, cuda, or cpu
   experiment_name: "hpo_mobilenetv3_experiment"
