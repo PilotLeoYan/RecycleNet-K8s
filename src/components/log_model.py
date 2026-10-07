@@ -89,21 +89,23 @@ class LogModel:
             metrics: Dictionary of test metrics (accuracy, precision, recall, f1_score).
             fig_cm: Matplotlib Figure object displaying the confusion matrix.
         """
-        if not mlflow.active_run():
-            return
+        try:
+            if not mlflow.active_run():
+                return
 
-        mlflow.log_metrics(
-            {
-                "test_roc": roc,
-                "test_accuracy": metrics["accuracy"],
-                "test_precision": metrics["precision"],
-                "test_recall": metrics["recall"],
-                "test_f1_score": metrics["f1_score"],
-            }
-        )
+            mlflow.log_metrics(
+                {
+                    "test_roc": roc,
+                    "test_accuracy": metrics["accuracy"],
+                    "test_precision": metrics["precision"],
+                    "test_recall": metrics["recall"],
+                    "test_f1_score": metrics["f1_score"],
+                }
+            )
 
-        mlflow.log_figure(fig_cm, "confusion_matrix.png")
-        plt.close(fig_cm)  # close figures to avoid memory accumulation
+            mlflow.log_figure(fig_cm, "confusion_matrix.png")
+        finally:
+            plt.close(fig_cm)  # close figures to avoid memory accumulation
 
     def log_model(
         self,

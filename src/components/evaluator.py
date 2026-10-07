@@ -2,10 +2,14 @@
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
 
 from src.components.log_model import LogModel
 from src.components.metrics import calculate_roc_auc, confusion, evals
+from src.utils import get_logger
+
+logger = get_logger(__name__)
 
 CMAP = "Blues"
 
@@ -19,8 +23,7 @@ class Evaluator:
         logmodel: Optional MLflow logging helper.
     """
 
-    def __init__(
-        self,
+    def __init__(self,
         test_loader: DataLoader,
         device: torch.device | str,
         logmodel: LogModel | None = None,
@@ -82,19 +85,37 @@ class Evaluator:
     def evaluate(
         self,
         model: torch.nn.Module,
-    ) -> None:
+    ) -> dict[str, float]:
         """Compute test metrics, generate confusion matrix, and log to MLflow.
 
         Args:
             model: PyTorch model to evaluate.
+
+        Returns:
+            dict[str, float]: Evaluation metrics dictionary including ROC-AUC score.
         """
         predictions, probas, labels = self._test_model(model)
 
         metrics = evals(labels, predictions)
         roc = calculate_roc_auc(labels, probas)
+        all_metrics = {**metrics, "roc_auc": roc}
+
+        logger.info(
+            "Test evaluation results - Accuracy: %.4f, Precision: %.4f, Recall: %.4f, F1: %.4f, ROC-AUC: %.4f",
+            metrics["accuracy"],
+            metrics["precision"],
+            metrics["recall"],
+            metrics["f1_score"],
+            roc,
+        )
 
         cm_disp = confusion(labels, predictions)
         fig_cm = cm_disp.plot(cmap=CMAP).figure_
 
-        if self.logmodel is not None:
-            self.logmodel.log_test(roc, metrics, fig_cm)
+        try:
+            if self.logmodel is not None:
+                self.logmodel.log_test(roc, metrics, fig_cm)
+        finally:
+            plt.close(fig_cm)
+
+        return all_metrics
