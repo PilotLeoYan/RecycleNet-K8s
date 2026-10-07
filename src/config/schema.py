@@ -126,7 +126,6 @@ class TrainingConfig(BaseModel):
         learning_rate: Learning Rate (LR), Alpha, or Learning Step.
         weight_decay: Weight Decay, Lambda, or Penalty.
         device: Device identifier string ('cuda' or 'cpu').
-        checkpoints_dir: Path to storage experiments weights.
     """
 
     epochs: int = Field(default=10, ge=1)
@@ -201,12 +200,56 @@ class HPOConfig(BaseModel):
     max_epochs: int = Field(default=4, gt=0)
     grace_period: int = Field(default=2, gt=0)
     reduction_factor: int = Field(default=2, ge=2)
-    dataloader_n_workers: int = Field(default=4, ge=1)
+    dataloader_n_workers: int = Field(default=4, ge=0)
     max_concurrent_trials: int = Field(default=2, ge=1)
     cpu_resources_per_trial: float = Field(default=2.0, ge=1.0)
     gpu_resources_per_trial: float = Field(default=0.5, ge=0.0)
     device: str = Field(default="cpu")
     experiment_name: str = Field(default="hpo_mobilenetv3_experiment")
+
+    @model_validator(mode="after")
+    def validate_hpo_ranges(self) -> HPOConfig:
+        """Validate hyperparameter search intervals and candidate batch sizes."""
+        lr_min, lr_max = self.learning_rate_range
+        if lr_min <= 0 or lr_max <= 0:
+            raise ValueError(
+                f"learning_rate_range values must be positive (> 0), got: {self.learning_rate_range}"
+            )
+        if lr_min >= lr_max:
+            raise ValueError(
+                f"learning_rate_range lower bound must be less than upper bound, got: {self.learning_rate_range}"
+            )
+
+        wd_min, wd_max = self.weight_decay_range
+        if wd_min <= 0 or wd_max <= 0:
+            raise ValueError(
+                f"weight_decay_range values must be positive (> 0), got: {self.weight_decay_range}"
+            )
+        if wd_min >= wd_max:
+            raise ValueError(
+                f"weight_decay_range lower bound must be less than upper bound, got: {self.weight_decay_range}"
+            )
+
+        if not self.batch_size:
+            raise ValueError("batch_size candidate list must not be empty")
+
+        return self
+
+    def __str__(self) -> str:
+        return f"""HPOConfig:
+  weight_decay_range: {self.weight_decay_range}
+  learning_rate_range: {self.learning_rate_range}
+  batch_size: {self.batch_size}
+  num_samples: {self.num_samples}
+  max_epochs: {self.max_epochs}
+  grace_period: {self.grace_period}
+  reduction_factor: {self.reduction_factor}
+  dataloader_n_workers: {self.dataloader_n_workers}
+  max_concurrent_trials: {self.max_concurrent_trials}
+  cpu_resources_per_trial: {self.cpu_resources_per_trial}
+  gpu_resources_per_trial: {self.gpu_resources_per_trial}
+  device: {self.device}
+  experiment_name: {self.experiment_name}"""
 
 
 class AppConfig(BaseSettings):
@@ -260,15 +303,16 @@ class AppConfig(BaseSettings):
         if not isinstance(data, dict):
             raise ValueError(
                 f"Configuration YAML at {path} must define a mapping, "
-                "got {type(data).__name__}"
+                f"got {type(data).__name__}"
             )
 
         return cls(**data)
 
     def __str__(self) -> str:
         return f"""AppConfig:
-{self.ingestion.__str__()}
-{self.transformation.__str__()}
-{self.reproducibility.__str__()}
-{self.training.__str__()}
-{self.tracking.__str__()}"""
+{self.ingestion}
+{self.transformation}
+{self.reproducibility}
+{self.training}
+{self.tracking}
+{self.hpo}"""
