@@ -1,6 +1,5 @@
 """Training loop execution, validation monitoring, early stopping, and checkpointing."""
 
-import copy
 from pathlib import Path
 
 import numpy as np
@@ -139,7 +138,7 @@ class ModelTrainer:
         epochs_no_improve = 0
 
         model.to(self.device)
-        best_state = copy.deepcopy(model.state_dict())
+        best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
         for epoch in range(epochs):
             train_loss = self._train_step(model)
@@ -158,9 +157,7 @@ class ModelTrainer:
                 new_best = True
                 best_loss = valid_loss
                 epochs_no_improve = 0
-                # warning, if the model is too big
-                # maybe can cause Out of Memory
-                best_state = copy.deepcopy(model.state_dict())
+                best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
             logger.info(
                 "epoch: %i, loss: %.4f, v_loss: %.4f%s",
