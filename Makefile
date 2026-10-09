@@ -1,10 +1,16 @@
-.PHONY: train hpo mlflow format lint test check
+.PHONY: sync-cpu sync-gpu train hpo mlflow format lint test check
+
+sync-cpu:
+	uv sync --extra cpu
+
+sync-gpu:
+	uv sync --extra gpu
 
 train:
 	uv run python -m src train
 
 hpo:
-	uv run python -m src hpo
+	RAY_ENABLE_UV_RUN_RUNTIME_ENV=0 uv run python -m src hpo
 
 mlflow:
 	uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
