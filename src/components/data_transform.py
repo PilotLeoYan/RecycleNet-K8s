@@ -190,7 +190,7 @@ class DataTransformation:
             shuffle=is_train,
             drop_last=is_train,
             num_workers=self.config.num_workers,
-            pin_memory=self.config.pin_memory,
+            pin_memory=self.config.pin_memory if torch.cuda.is_available() else False,
             worker_init_fn=seed_worker,
             generator=generator,
         )
