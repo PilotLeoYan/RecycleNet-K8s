@@ -1,10 +1,28 @@
-.PHONY: sync-cpu sync-gpu train hpo mlflow format lint test check
+.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test train hpo mlflow format lint test check
 
 sync-cpu:
 	uv sync --extra cpu
 
 sync-gpu:
 	uv sync --extra gpu
+
+sync-dev-cpu:
+	uv sync --extra cpu --all-groups
+
+sync-dev-gpu:
+	uv sync --extra gpu --all-groups
+
+smoke-test:
+	make sync-dev-cpu
+	make format
+	make lint
+	make test
+	make train
+	make hpo
+	make sync-dev-gpu
+	make train
+	make hpo
+    
 
 train:
 	uv run python -m src train
