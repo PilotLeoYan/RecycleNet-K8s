@@ -281,7 +281,10 @@ class TrainPipeline:
                         "Ray training completed without generating a valid checkpoint."
                     )
 
-                if results.metrics_dataframe is not None:
+                if (
+                    results.metrics_dataframe is not None
+                    and not results.metrics_dataframe.empty
+                ):
                     records = results.metrics_dataframe.to_dict(orient="records")
                     epoch_step = 0
                     for record in records:
@@ -323,8 +326,8 @@ class TrainPipeline:
                             and not np.isnan(record["test_loss"])
                         ):
                             fig_cm = record.get("confusion_matrix")
-                            if fig_cm is None or not isinstance(fig_cm, Figure):
-                                fig_cm, _ = plt.subplots()
+                            if fig_cm is not None and not isinstance(fig_cm, Figure):
+                                fig_cm = None
 
                             test_metrics = {
                                 "test_loss": float(record["test_loss"]),
@@ -346,6 +349,47 @@ class TrainPipeline:
                                 test_metrics["f1_score"],
                                 float(record.get("auc", 0.0)),
                             )
+                elif results.metrics:
+                    last_metrics = results.metrics
+                    if "train_loss" in last_metrics and "valid_loss" in last_metrics:
+                        self.logmodel.log_epoch(
+                            train_loss=float(last_metrics["train_loss"]),
+                            valid_loss=float(last_metrics["valid_loss"]),
+                            valid_metrics={
+                                "accuracy": float(
+                                    last_metrics.get("valid_accuracy", 0.0)
+                                ),
+                                "precision": float(
+                                    last_metrics.get("valid_precision", 0.0)
+                                ),
+                                "recall": float(last_metrics.get("valid_recall", 0.0)),
+                                "f1_score": float(
+                                    last_metrics.get("valid_f1_score", 0.0)
+                                ),
+                            },
+                            step=0,
+                        )
+                    if "test_loss" in last_metrics:
+                        fig_cm = last_metrics.get("confusion_matrix")
+                        if fig_cm is not None and not isinstance(fig_cm, Figure):
+                            fig_cm = None
+                        self.logmodel.log_test(
+                            roc=float(last_metrics.get("auc", 0.0)),
+                            metrics={
+                                "test_loss": float(last_metrics["test_loss"]),
+                                "accuracy": float(
+                                    last_metrics.get("test_accuracy", 0.0)
+                                ),
+                                "precision": float(
+                                    last_metrics.get("test_precision", 0.0)
+                                ),
+                                "recall": float(last_metrics.get("test_recall", 0.0)),
+                                "f1_score": float(
+                                    last_metrics.get("test_f1_score", 0.0)
+                                ),
+                            },
+                            fig_cm=fig_cm,
+                        )
 
                 logger.info("Restoring best model checkpoint for model registry...")
                 best_model = build_mobilenet_v3(num_classes)

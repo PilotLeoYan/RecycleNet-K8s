@@ -244,6 +244,11 @@ class HPOPipeline:
                 )
 
             best_result = results.get_best_result(metric="valid_loss", mode="min")
+            if best_result is None or best_result.config is None:
+                raise RecycleNetException(
+                    "Ray Tune completed without finding a valid best result."
+                )
+
             logger.info("Ray Tune HPO search completed successfully.")
             logger.info("Best trial config: %s", best_result.config)
             logger.info("Best trial metrics: %s", best_result.metrics)
