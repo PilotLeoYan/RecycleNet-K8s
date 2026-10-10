@@ -35,6 +35,7 @@ def assign_ray_resources(
         effective_device = requested_device
 
     use_gpu = effective_device == "cuda"
-    gpu_res = gpu_resources if use_gpu else 0.0
-
-    return effective_device, {"cpu": cpu_resources, "gpu": gpu_res}
+    resources: dict[str, float] = {"CPU": float(cpu_resources)}
+    if use_gpu and gpu_resources > 0:
+        resources["GPU"] = float(gpu_resources)
+    return effective_device, resources

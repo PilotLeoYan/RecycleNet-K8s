@@ -27,7 +27,10 @@ training:
   patience: 3
   learning_rate: 0.001
   weight_decay: 0.0001
-  device: "cuda"
+  num_workers: 1
+  cpu_resources_per_worker: 2
+  gpu_resources_per_worker: 1.0
+  device: "auto" # auto, cuda, or cpu
 
 tracking:
   experiment_name: "RecycleNet_Training"
