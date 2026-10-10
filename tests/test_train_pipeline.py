@@ -161,7 +161,10 @@ def test_train_pipeline_run_no_checkpoint_raises(
     pipeline = TrainPipeline(mock_app_config)
 
     dataset_dir = tmp_path / "extracted_data"
-    (dataset_dir / "cardboard").mkdir(parents=True)
+    cardboard_dir = dataset_dir / "cardboard"
+    cardboard_dir.mkdir(parents=True)
+    dummy_img = Image.new("RGB", (16, 16), color="red")
+    dummy_img.save(cardboard_dir / "img1.png")
     monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
 
     mock_result = MagicMock()
@@ -171,7 +174,7 @@ def test_train_pipeline_run_no_checkpoint_raises(
         "src.pipeline.train_pipeline.TorchTrainer.fit",
         return_value=mock_result,
     ):
-        with pytest.raises(RecycleNetException):
+        with pytest.raises(RecycleNetException, match="valid checkpoint"):
             pipeline.run()
 
 
@@ -240,8 +243,14 @@ def test_train_pipeline_run_fallback_metrics(
     pipeline = TrainPipeline(mock_app_config)
 
     dataset_dir = tmp_path / "extracted_data"
-    (dataset_dir / "cardboard").mkdir(parents=True)
-    (dataset_dir / "glass").mkdir(parents=True)
+    cardboard_dir = dataset_dir / "cardboard"
+    glass_dir = dataset_dir / "glass"
+    cardboard_dir.mkdir(parents=True)
+    glass_dir.mkdir(parents=True)
+
+    dummy_img = Image.new("RGB", (16, 16), color="red")
+    dummy_img.save(cardboard_dir / "img1.png")
+    dummy_img.save(glass_dir / "img1.png")
     monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
 
     ckpt_dir = tmp_path / "ckpt"

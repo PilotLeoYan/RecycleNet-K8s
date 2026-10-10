@@ -96,7 +96,7 @@ def calculate_roc_auc(
                 labels=np.arange(num_classes),
             )
         )
-    except (ValueError, IndexError):
+    except ValueError, IndexError:
         return 0.0
 
 
