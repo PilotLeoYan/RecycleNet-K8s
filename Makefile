@@ -7,7 +7,7 @@ sync-gpu:
 	uv sync --extra gpu
 
 train:
-	uv run python -m src train
+	RAY_ENABLE_UV_RUN_RUNTIME_ENV=0 RAY_LOGGER_LEVEL=error uv run python -m src train
 
 hpo:
 	RAY_ENABLE_UV_RUN_RUNTIME_ENV=0 uv run python -m src hpo

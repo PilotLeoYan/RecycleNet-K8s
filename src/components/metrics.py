@@ -15,8 +15,8 @@ AVERAGE = "macro"
 MULTI_CLASS = "ovr"
 
 
-def evals(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
-    """Computes standard multi-class evaluation metrics.
+def get_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+    """Compute standard multi-class evaluation metrics.
 
     Calculates accuracy, macro-averaged precision, recall, and F1-score.
 
@@ -28,34 +28,62 @@ def evals(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         dict[str, float]: Dictionary containing accuracy, precision, recall,
             and f1_score.
     """
-    metrics: dict[str, float] = dict()
+    if len(y_true) == 0:
+        return {
+            "accuracy": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+        }
 
-    # 1. Accuracy
-    metrics["accuracy"] = accuracy_score(y_true, y_pred, normalize=True)
-
-    # 2. Precision
-    metrics["precision"] = precision_score(
-        y_true, y_pred, average=AVERAGE, zero_division=0
+    metrics: dict[str, float] = {}
+    metrics["accuracy"] = float(accuracy_score(y_true, y_pred, normalize=True))
+    metrics["precision"] = float(
+        precision_score(y_true, y_pred, average=AVERAGE, zero_division=0)
     )
-
-    # 3. Recall
-    metrics["recall"] = recall_score(y_true, y_pred, average=AVERAGE, zero_division=0)
-
-    # 4. F1-Score
-    metrics["f1_score"] = f1_score(y_true, y_pred, average=AVERAGE, zero_division=0)
-
+    metrics["recall"] = float(
+        recall_score(y_true, y_pred, average=AVERAGE, zero_division=0)
+    )
+    metrics["f1_score"] = float(
+        f1_score(y_true, y_pred, average=AVERAGE, zero_division=0)
+    )
     return metrics
 
 
-def calculate_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
-    """Computes macro-averaged One-vs-Rest (OvR) ROC AUC score.
+def get_loss_metrics(
+    loss: float,
+    vloss: float,
+    vmetrics: dict[str, float],
+) -> dict[str, float]:
+    """Combine training loss, validation loss, and validation metrics.
+
+    Args:
+        loss: Average training loss.
+        vloss: Average validation loss.
+        vmetrics: Dictionary of validation evaluation metrics.
+
+    Returns:
+        dict[str, float]: Consolidated dictionary containing train_loss, valid_loss,
+            and prefixed validation metrics.
+    """
+    metrics = {f"valid_{k}": float(v) for k, v in vmetrics.items()}
+    metrics["train_loss"] = float(loss)
+    metrics["valid_loss"] = float(vloss)
+    return metrics
+
+
+def calculate_roc_auc(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+) -> float:
+    """Compute macro-averaged One-vs-Rest (OvR) ROC AUC score.
 
     Args:
         y_true: 1D array of ground truth class labels.
         y_score: 2D array of predicted probabilities with shape (n_samples, n_classes).
 
     Returns:
-        float: Computed ROC AUC score, or 0.0 if calculation fails.
+        float: Computed ROC AUC score, or 0.0 if calculation fails or is undefined.
     """
     try:
         num_classes = y_score.shape[1]
@@ -72,8 +100,11 @@ def calculate_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
         return 0.0
 
 
-def confusion(y_true: np.ndarray, y_pred: np.ndarray) -> ConfusionMatrixDisplay:
-    """Generates a ConfusionMatrixDisplay object from true and predicted labels.
+def confusion(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+) -> ConfusionMatrixDisplay:
+    """Generate a ConfusionMatrixDisplay object from true and predicted labels.
 
     Args:
         y_true: 1D array of ground truth class labels.
@@ -83,5 +114,20 @@ def confusion(y_true: np.ndarray, y_pred: np.ndarray) -> ConfusionMatrixDisplay:
         ConfusionMatrixDisplay: Scikit-learn confusion matrix display container.
     """
     cm = confusion_matrix(y_true, y_pred)
-
     return ConfusionMatrixDisplay(confusion_matrix=cm)
+
+
+def confusion_matrix_display(
+    cm: np.ndarray,
+    display_labels: list[str] | None = None,
+) -> ConfusionMatrixDisplay:
+    """Create a ConfusionMatrixDisplay from an existing confusion matrix array.
+
+    Args:
+        cm: 2D confusion matrix array.
+        display_labels: Optional list of class display names.
+
+    Returns:
+        ConfusionMatrixDisplay: Scikit-learn confusion matrix display container.
+    """
+    return ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=display_labels)

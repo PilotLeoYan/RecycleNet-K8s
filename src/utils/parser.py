@@ -1,5 +1,9 @@
+"""Command-line argument parser construction for the RecycleNet CLI."""
+
 import argparse
 from pathlib import Path
+
+__all__ = ["build_parser"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(
         dest="command",
-        help="Worflow stage to execute",
+        help="Workflow stage to execute",
         required=True,
     )
 

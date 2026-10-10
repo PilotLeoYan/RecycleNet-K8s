@@ -48,9 +48,9 @@ def test_extract_dataset_ignores_macosx_metadata(
 
     zip_path = tmp_path / "mac_dataset.zip"
     with zipfile.ZipFile(zip_path, "w") as zf:
-        # Archivo real
+        # Real dataset file
         zf.writestr("dataset-original/cardboard/0.jpg", b"fake image bytes")
-        # Basura de macOS
+        # macOS metadata files
         zf.writestr("__MACOSX/dataset-original/cardboard/._0.jpg", b"mac metadata")
         zf.writestr("dataset-original/.DS_Store", b"ds store")
 

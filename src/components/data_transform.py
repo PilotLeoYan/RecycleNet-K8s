@@ -242,3 +242,20 @@ class DataTransformation:
         test_loader = self._build_dataloader(test_ds, False)
 
         return train_loader, valid_loader, test_loader
+
+    def discover_classes(
+        self,
+        raw_data_dir: Path,
+    ) -> list[str]:
+        """Discover class labels from directory structure and populate class metadata.
+
+        Args:
+            raw_data_dir: Path to directory containing class subfolders of images.
+
+        Returns:
+            list[str]: List of detected class names sorted alphabetically.
+        """
+        dataset = datasets.ImageFolder(root=raw_data_dir)
+        self.classes = dataset.classes
+        self.class_to_idx = dataset.class_to_idx
+        return self.classes
