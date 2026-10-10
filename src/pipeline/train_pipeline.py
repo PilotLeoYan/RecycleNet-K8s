@@ -396,6 +396,7 @@ class TrainPipeline:
                     checkpoint_data = torch.load(
                         checkpoint_path,
                         map_location="cpu",
+                        weights_only=True,
                     )
                     best_model.load_state_dict(checkpoint_data["model_state"])
 

@@ -34,13 +34,13 @@ Core modular components powering data ingestion, preprocessing, modeling, traini
 
 ---
 
-## Model Trainer
-::: src.components.trainer
+## Distributed Train Step
+::: src.components.train_step
 
 ---
 
-## Evaluator
-::: src.components.evaluator
+## Distributed Evaluation
+::: src.components.evals
 
 ---
 
