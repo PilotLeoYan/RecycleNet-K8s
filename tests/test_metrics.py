@@ -106,3 +106,21 @@ def test_confusion_matrix_display() -> None:
 
     assert isinstance(display, ConfusionMatrixDisplay)
     assert display.display_labels == ["cat", "dog"]
+
+
+def test_get_metrics_empty() -> None:
+    """Test get_metrics returns 0.0 values when given empty arrays."""
+    metrics = get_metrics(np.array([]), np.array([]))
+    assert metrics["accuracy"] == 0.0
+    assert metrics["precision"] == 0.0
+    assert metrics["recall"] == 0.0
+    assert metrics["f1_score"] == 0.0
+
+
+def test_calculate_roc_auc_empty() -> None:
+    """Test calculate_roc_auc returns 0.0 when given empty arrays or 1D score."""
+    roc = calculate_roc_auc(np.array([]), np.empty((0, 2)))
+    assert roc == 0.0
+
+    roc_1d = calculate_roc_auc(np.array([0, 1]), np.array([0.2, 0.8]))
+    assert roc_1d == 0.0

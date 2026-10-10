@@ -231,3 +231,58 @@ def test_train_loop_per_worker_execution(tmp_path: Path) -> None:
         train_loop_per_worker(config)
 
         assert mock_report.call_count == 2
+
+
+def test_train_pipeline_run_fallback_metrics(
+    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test TrainPipeline.run handles fallback when metrics_dataframe is None."""
+    pipeline = TrainPipeline(mock_app_config)
+
+    dataset_dir = tmp_path / "extracted_data"
+    (dataset_dir / "cardboard").mkdir(parents=True)
+    (dataset_dir / "glass").mkdir(parents=True)
+    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
+
+    ckpt_dir = tmp_path / "ckpt"
+    ckpt_dir.mkdir(parents=True)
+    dummy_model = build_mobilenet_v3(2)
+    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
+
+    class MockCheckpoint:
+        @contextmanager
+        def as_directory(self) -> Generator[str]:
+            yield str(ckpt_dir)
+
+    mock_result = MagicMock()
+    mock_result.checkpoint = MockCheckpoint()
+    mock_result.metrics_dataframe = None
+    mock_result.metrics = {
+        "train_loss": 0.35,
+        "valid_loss": 0.28,
+        "valid_accuracy": 0.90,
+        "test_loss": 0.20,
+        "test_accuracy": 0.93,
+        "auc": 0.96,
+    }
+
+    mock_logmodel = MagicMock()
+    mock_run = MagicMock()
+    mock_run.info.run_id = "test-fallback-run"
+
+    @contextmanager
+    def run_context() -> Generator[MagicMock]:
+        yield mock_run
+
+    mock_logmodel.start_run.return_value = run_context()
+    pipeline.logmodel = mock_logmodel
+
+    with patch(
+        "src.pipeline.train_pipeline.TorchTrainer.fit",
+        return_value=mock_result,
+    ):
+        pipeline.run()
+
+    assert mock_logmodel.log_epoch.called
+    assert mock_logmodel.log_test.called
+    assert mock_logmodel.register_checkpoint.called

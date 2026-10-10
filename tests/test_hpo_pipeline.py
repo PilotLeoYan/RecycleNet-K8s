@@ -157,3 +157,25 @@ def test_train_eval_trial_execution(mock_app_config: AppConfig, tmp_path: Path) 
         train_eval_trial(trial_config, data_dir=tmp_path, app_config=mock_app_config)
 
         assert mock_report.call_count == 1
+
+
+def test_hpo_pipeline_run_no_best_result_raises(
+    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test HPOPipeline.run raises RecycleNetException when get_best_result is None."""
+    pipeline = HPOPipeline(mock_app_config)
+
+    dataset_dir = tmp_path / "extracted_data"
+    (dataset_dir / "cardboard").mkdir(parents=True)
+    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
+
+    mock_result_grid = MagicMock()
+    mock_result_grid.errors = []
+    mock_result_grid.get_best_result.return_value = None
+
+    mock_tuner = MagicMock()
+    mock_tuner.fit.return_value = mock_result_grid
+
+    with patch("src.pipeline.hpo_pipeline.tune.Tuner", return_value=mock_tuner):
+        with pytest.raises(RecycleNetException):
+            pipeline.run()
