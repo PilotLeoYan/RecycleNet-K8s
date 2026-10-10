@@ -1,3 +1,5 @@
+"""Pydantic configuration models and settings for the RecycleNet pipeline."""
+
 from pathlib import Path
 from typing import Any
 
@@ -269,7 +271,7 @@ class AppConfig(BaseSettings):
         if not isinstance(data, dict):
             raise ValueError(
                 f"Configuration YAML at {path} must define a mapping, "
-                "got {type(data).__name__}"
+                f"got {type(data).__name__}"
             )
 
         return cls(**data)

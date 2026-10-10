@@ -1,8 +1,12 @@
+"""Hardware resource allocation helper for distributed Ray execution."""
+
 from torch.cuda import is_available
 
 from src.utils import get_logger
 
 logger = get_logger(__name__)
+
+__all__ = ["assign_ray_resources"]
 
 
 def assign_ray_resources(
@@ -28,7 +32,7 @@ def assign_ray_resources(
         effective_device = "cuda" if has_cuda else "cpu"
     elif requested_device == "cuda" and not has_cuda:
         logger.warning(
-            "CUDA requested if config but not available. Falling back to CPU."
+            "CUDA requested in config but not available. Falling back to CPU."
         )
         effective_device = "cpu"
     else:

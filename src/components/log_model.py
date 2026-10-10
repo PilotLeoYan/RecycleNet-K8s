@@ -98,18 +98,21 @@ class LogModel:
         if not mlflow.active_run():
             return
 
-        mlflow.log_metrics(
-            {
-                "test_roc": roc,
-                "test_accuracy": metrics["accuracy"],
-                "test_precision": metrics["precision"],
-                "test_recall": metrics["recall"],
-                "test_f1_score": metrics["f1_score"],
-            }
-        )
+        metrics_to_log: dict[str, float] = {
+            "test_roc": roc,
+            "test_accuracy": metrics.get("accuracy", 0.0),
+            "test_precision": metrics.get("precision", 0.0),
+            "test_recall": metrics.get("recall", 0.0),
+            "test_f1_score": metrics.get("f1_score", 0.0),
+        }
+        if "test_loss" in metrics:
+            metrics_to_log["test_loss"] = float(metrics["test_loss"])
 
-        mlflow.log_figure(fig_cm, "confusion_matrix.png")
-        plt.close(fig_cm)  # close figures to avoid memory accumulation
+        mlflow.log_metrics(metrics_to_log)
+
+        if fig_cm is not None:
+            mlflow.log_figure(fig_cm, "confusion_matrix.png")
+            plt.close(fig_cm)  # close figures to avoid memory accumulation
 
     def log_model(
         self,
