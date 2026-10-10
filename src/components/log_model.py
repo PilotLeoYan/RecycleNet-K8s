@@ -37,10 +37,16 @@ class LogModel:
             self.config.registered_model_name = registered_model_name
 
     def set_experiment_tracking(self) -> None:
+        """Configure MLflow tracking URI and active experiment name."""
         mlflow.set_tracking_uri(self.config.tracking_uri)
         mlflow.set_experiment(self.config.experiment_name)
 
     def start_run(self) -> ActiveRun:
+        """Initialize and start a new MLflow active run with timestamped name.
+
+        Returns:
+            ActiveRun: The newly started MLflow active run object.
+        """
         self.set_experiment_tracking()
         run_name = f"mobilenetv3_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         return mlflow.start_run(run_name=run_name)
