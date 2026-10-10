@@ -179,3 +179,23 @@ def test_hpo_pipeline_run_no_best_result_raises(
     with patch("src.pipeline.hpo_pipeline.tune.Tuner", return_value=mock_tuner):
         with pytest.raises(RecycleNetException):
             pipeline.run()
+
+
+def test_hpo_pipeline_run_fit_exception_raises(
+    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test HPOPipeline.run raises exception when Tuner.fit raises an error."""
+    pipeline = HPOPipeline(mock_app_config)
+
+    dataset_dir = tmp_path / "extracted_data"
+    (dataset_dir / "cardboard").mkdir(parents=True)
+    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
+
+    with patch(
+        "src.pipeline.hpo_pipeline.tune.Tuner.fit",
+        side_effect=RuntimeError("Ray cluster connection error"),
+    ):
+        with pytest.raises(
+            RecycleNetException, match="Error encountered during distributed Ray Tune"
+        ):
+            pipeline.run()

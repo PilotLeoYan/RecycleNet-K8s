@@ -1,5 +1,6 @@
 """Hyperparameter Optimization (HPO) pipeline orchestrator using Ray Tune and Optuna."""
 
+import gc
 from pathlib import Path
 from typing import Any
 
@@ -83,8 +84,6 @@ def train_eval_trial(
     finally:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        import gc
-
         gc.collect()
 
 

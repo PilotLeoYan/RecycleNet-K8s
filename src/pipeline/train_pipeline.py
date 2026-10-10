@@ -1,5 +1,6 @@
 """End-to-end distributed training pipeline orchestrator for RecycleNet."""
 
+import gc
 import os
 import tempfile
 from typing import Any
@@ -148,8 +149,6 @@ def train_loop_per_worker(
     finally:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        import gc
-
         gc.collect()
 
 
