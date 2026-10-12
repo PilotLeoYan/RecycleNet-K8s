@@ -1,0 +1,59 @@
+ingestion:
+  zip_source: "trashnet/dataset-original.zip"
+  raw_output_dir: "data/raw"
+
+transformation:
+  image_size: [224, 224]
+  image_mean: [0.485, 0.456, 0.406]
+  image_std: [0.229, 0.224, 0.225]
+  random_h_flip: 0.5
+  random_rotation: [-90, 90]
+  train_split: 0.7
+  eval_split: 0.15
+  test_split: 0.15
+  batch_size: 32
+  num_workers: 4
+  pin_memory: True
+
+reproducibility:
+  random_seed: 42
+  numpy_seed: 42
+  torch_seed: 42
+  deterministic: True
+  warn_only: True
+
+training:
+  epochs: 3
+  patience: 3
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  num_workers: 1
+  cpu_resources_per_worker: 2
+  gpu_resources_per_worker: 1.0
+  device: "auto" # auto, cuda, or cpu
+
+tracking:
+  experiment_name: "RecycleNet_Smoke_Test"
+  registered_model_name: "RecycleNet_Dev"
+  tracking_uri: "sqlite:///mlflow.db"
+  tags:
+      framework: "pytorch"
+      model_architecture: "mobilenet_v3_small"
+      dataset: "trashnet"
+      task: "image_classification"
+      run_type: "smoke_test"
+
+hpo:
+  weight_decay_range: [1e-4, 1e-1] # loguniform(1e-4, 1e-1)
+  learning_rate_range: [1e-4, 1e-1] # loguniform(1e-4, 1e-1)
+  batch_size: [8, 16, 32]
+  num_samples: 1
+  max_epochs: 1
+  grace_period: 1
+  reduction_factor: 2
+  dataloader_n_workers: 4
+  max_concurrent_trials: 2
+  cpu_resources_per_trial: 2
+  gpu_resources_per_trial: 0.5
+  device: "auto" # auto, cuda, or cpu
+  experiment_name: "hpo_mobilenetv3_experiment"
