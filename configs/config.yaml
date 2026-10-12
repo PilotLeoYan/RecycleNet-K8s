@@ -41,7 +41,7 @@ tracking:
       model_architecture: "mobilenet_v3_small"
       dataset: "trashnet"
       task: "image_classification"
-      run_type: "smoke_test"
+      run_type: "deploy"
 
 hpo:
   weight_decay_range: [1e-4, 1e-1] # loguniform(1e-4, 1e-1)
