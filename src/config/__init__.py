@@ -1,3 +1,5 @@
+"""Configuration schemas and settings definitions for RecycleNet."""
+
 from .schema import (
     AppConfig,
     HPOConfig,

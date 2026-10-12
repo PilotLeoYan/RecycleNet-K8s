@@ -1,3 +1,5 @@
+"""Pydantic configuration models and settings for the RecycleNet pipeline."""
+
 from pathlib import Path
 from typing import Any
 
@@ -133,7 +135,13 @@ class TrainingConfig(BaseModel):
     patience: int = Field(default=3, ge=1)
     learning_rate: float = Field(default=1e-3, gt=0)
     weight_decay: float = Field(default=1e-4, ge=0.0)
-    device: str = "cuda"
+    num_workers: int = Field(default=2, ge=1)
+    cpu_resources_per_worker: float = Field(default=2.0, ge=1.0)
+    gpu_resources_per_worker: float = Field(default=0.5, ge=0.0)
+    device: str = Field(
+        default="auto",
+        description="Target execution device: 'auto' (detects CUDA), 'cuda' or 'cpu'.",
+    )
 
     def __str__(self) -> str:
         return f"""TrainingConfig:
@@ -263,7 +271,7 @@ class AppConfig(BaseSettings):
         if not isinstance(data, dict):
             raise ValueError(
                 f"Configuration YAML at {path} must define a mapping, "
-                "got {type(data).__name__}"
+                f"got {type(data).__name__}"
             )
 
         return cls(**data)

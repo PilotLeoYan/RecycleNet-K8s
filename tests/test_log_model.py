@@ -81,6 +81,7 @@ def test_log_epoch_with_active_run(
         logger_model.log_test(
             roc=0.85,
             metrics={
+                "test_loss": 0.25,
                 "accuracy": 0.8,
                 "precision": 0.8,
                 "recall": 0.8,

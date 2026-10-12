@@ -83,3 +83,20 @@ def test_json_formatter() -> None:
     data = json.loads(formatted)
     assert data["message"] == "Error message"
     assert data["severity"] == "ERROR"
+
+
+def test_json_formatter_with_extra_fields() -> None:
+    formatter = JSONFormatter()
+    record = logging.LogRecord(
+        name="test_logger",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=25,
+        msg="Structured message",
+        args=(),
+        exc_info=None,
+    )
+    record.custom_field = "custom_value"
+    formatted = formatter.format(record)
+    data = json.loads(formatted)
+    assert data["custom_field"] == "custom_value"
