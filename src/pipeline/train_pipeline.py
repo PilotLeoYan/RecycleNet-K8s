@@ -77,6 +77,8 @@ def train_loop_per_worker(
 
         best_vloss = float("inf")
         best_model_weights = None
+        epochs_no_improve = 0
+        patience = config.get("patience")
 
         for epoch in range(config["epochs"]):
             sampler = getattr(train_loader, "sampler", None)
@@ -98,6 +100,7 @@ def train_loop_per_worker(
 
             if metrics["valid_loss"] < best_vloss:
                 best_vloss = metrics["valid_loss"]
+                epochs_no_improve = 0
                 raw_model = (
                     model.module
                     if isinstance(model, DistributedDataParallel)
@@ -106,6 +109,8 @@ def train_loop_per_worker(
                 best_model_weights = {
                     k: v.cpu().clone() for k, v in raw_model.state_dict().items()
                 }
+            else:
+                epochs_no_improve += 1
 
             with tempfile.TemporaryDirectory() as temp_checkpoint_dir:
                 raw_model = (
@@ -127,6 +132,14 @@ def train_loop_per_worker(
                     metrics=metrics,
                     checkpoint=Checkpoint.from_directory(temp_checkpoint_dir),
                 )
+
+            if patience is not None and epochs_no_improve >= patience:
+                logger.info(
+                    "Early stopping triggered at epoch %d (%d epochs without improvement).",
+                    epoch + 1,
+                    epochs_no_improve,
+                )
+                break
 
         if best_model_weights is not None:
             raw_model = (
@@ -235,6 +248,7 @@ class TrainPipeline:
                 "learning_rate": self.config.training.learning_rate,
                 "weight_decay": self.config.training.weight_decay,
                 "epochs": self.config.training.epochs,
+                "patience": self.config.training.patience,
             }
 
             trainer = TorchTrainer(
