@@ -214,13 +214,20 @@ def test_train_loop_per_worker_execution(tmp_path: Path) -> None:
         )
         mock_dt.return_value = dt_instance
 
+        def fake_train_valid_step() -> dict[str, float]:
+            if mock_ts.call_args:
+                opt = mock_ts.call_args.kwargs.get("optimizer")
+                if opt is not None:
+                    opt.step()
+            return {
+                "train_loss": 0.5,
+                "valid_loss": 0.4,
+                "valid_accuracy": 0.8,
+                "valid_f1_score": 0.8,
+            }
+
         ts_instance = MagicMock()
-        ts_instance.train_valid_step.return_value = {
-            "train_loss": 0.5,
-            "valid_loss": 0.4,
-            "valid_accuracy": 0.8,
-            "valid_f1_score": 0.8,
-        }
+        ts_instance.train_valid_step.side_effect = fake_train_valid_step
         mock_ts.return_value = ts_instance
 
         td_instance = MagicMock()

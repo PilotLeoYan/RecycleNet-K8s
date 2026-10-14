@@ -18,6 +18,7 @@ from ray.train import (
 )
 from ray.train.torch import TorchTrainer
 from torch.nn.parallel import DistributedDataParallel
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from src.components.data_ingestion import DataIngestion
 from src.components.data_transform import DataTransformation
@@ -25,7 +26,7 @@ from src.components.evals import TestDistributed
 from src.components.log_model import LogModel
 from src.components.loss_functions import get_criterion
 from src.components.model import build_mobilenet_v3
-from src.components.optimizers import get_optimizer
+from src.components.optimizers import get_optimizer, get_scheduler
 from src.components.train_step import TrainStep
 from src.config.schema import AppConfig
 from src.pipeline.ray_resources import assign_ray_resources
@@ -65,6 +66,14 @@ def train_loop_per_worker(
             learning_rate=config["learning_rate"],
             weight_decay=config["weight_decay"],
         )
+        scheduler = get_scheduler(
+            optimizer=optimizer,
+            scheduler_type=config.get("scheduler", "cosine"),
+            epochs=config["epochs"],
+            min_lr=config.get("min_lr", 1e-5),
+            warmup_epochs=config.get("warmup_epochs", 0),
+            patience=max(1, config.get("patience", 3) // 2),
+        )
 
         trainer = TrainStep(
             model=model,
@@ -85,15 +94,25 @@ def train_loop_per_worker(
 
             metrics = trainer.train_valid_step()
 
+            if scheduler is not None:
+                if isinstance(scheduler, ReduceLROnPlateau):
+                    scheduler.step(metrics["valid_loss"])
+                else:
+                    scheduler.step()
+
+            current_lr = float(optimizer.param_groups[0]["lr"])
+            metrics["learning_rate"] = current_lr
+
             logger.info(
                 "Epoch [%d/%d] - train_loss: %.4f - valid_loss: %.4f - "
-                "valid_accuracy: %.4f - valid_f1: %.4f",
+                "valid_accuracy: %.4f - valid_f1: %.4f - lr: %.6f",
                 epoch + 1,
                 config["epochs"],
                 metrics.get("train_loss", 0.0),
                 metrics.get("valid_loss", 0.0),
                 metrics.get("valid_accuracy", 0.0),
                 metrics.get("valid_f1_score", 0.0),
+                current_lr,
             )
 
             if metrics["valid_loss"] < best_vloss:
@@ -119,6 +138,9 @@ def train_loop_per_worker(
                         "epoch": epoch,
                         "model_state": state_dict,
                         "optimizer_state": optimizer.state_dict(),
+                        "scheduler_state": (
+                            scheduler.state_dict() if scheduler is not None else None
+                        ),
                     },
                     os.path.join(temp_checkpoint_dir, "model.pt"),
                 )
@@ -235,6 +257,10 @@ class TrainPipeline:
                 "learning_rate": self.config.training.learning_rate,
                 "weight_decay": self.config.training.weight_decay,
                 "epochs": self.config.training.epochs,
+                "patience": self.config.training.patience,
+                "scheduler": self.config.training.scheduler,
+                "min_lr": self.config.training.min_lr,
+                "warmup_epochs": self.config.training.warmup_epochs,
             }
 
             trainer = TorchTrainer(
@@ -265,6 +291,9 @@ class TrainPipeline:
                         "batch_size": self.config.transformation.batch_size,
                         "learning_rate": self.config.training.learning_rate,
                         "weight_decay": self.config.training.weight_decay,
+                        "scheduler": self.config.training.scheduler,
+                        "min_lr": self.config.training.min_lr,
+                        "warmup_epochs": self.config.training.warmup_epochs,
                         "num_workers": self.config.training.num_workers,
                     },
                     config_dict=self.config.model_dump(mode="json"),
@@ -299,22 +328,31 @@ class TrainPipeline:
                                 "recall": float(record.get("valid_recall", 0.0)),
                                 "f1_score": float(record.get("valid_f1_score", 0.0)),
                             }
+                            epoch_lr = (
+                                float(record["learning_rate"])
+                                if "learning_rate" in record
+                                and record["learning_rate"] is not None
+                                and not np.isnan(record["learning_rate"])
+                                else None
+                            )
                             self.logmodel.log_epoch(
                                 train_loss=train_loss,
                                 valid_loss=valid_loss,
                                 valid_metrics=valid_metrics,
                                 step=epoch_step,
+                                lr=epoch_lr,
                             )
                             logger.info(
                                 "MLflow Epoch [%d/%d] Logged - "
                                 "train_loss: %.4f, valid_loss: %.4f, "
-                                "valid_accuracy: %.4f, valid_f1: %.4f",
+                                "valid_accuracy: %.4f, valid_f1: %.4f%s",
                                 epoch_step + 1,
                                 self.config.training.epochs,
                                 train_loss,
                                 valid_loss,
                                 valid_metrics["accuracy"],
                                 valid_metrics["f1_score"],
+                                f", lr: {epoch_lr:.6f}" if epoch_lr is not None else "",
                             )
                             epoch_step += 1
 
@@ -350,6 +388,13 @@ class TrainPipeline:
                 elif results.metrics:
                     last_metrics = results.metrics
                     if "train_loss" in last_metrics and "valid_loss" in last_metrics:
+                        last_lr = (
+                            float(last_metrics["learning_rate"])
+                            if "learning_rate" in last_metrics
+                            and last_metrics["learning_rate"] is not None
+                            and not np.isnan(last_metrics["learning_rate"])
+                            else None
+                        )
                         self.logmodel.log_epoch(
                             train_loss=float(last_metrics["train_loss"]),
                             valid_loss=float(last_metrics["valid_loss"]),
@@ -366,7 +411,9 @@ class TrainPipeline:
                                 ),
                             },
                             step=0,
+                            lr=last_lr,
                         )
+
                     if "test_loss" in last_metrics:
                         fig_cm = last_metrics.get("confusion_matrix")
                         if fig_cm is not None and not isinstance(fig_cm, Figure):
