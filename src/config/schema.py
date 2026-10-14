@@ -127,6 +127,9 @@ class TrainingConfig(BaseModel):
         patience: Epoch patience threshold for early stopping.
         learning_rate: Learning Rate (LR), Alpha, or Learning Step.
         weight_decay: Weight Decay, Lambda, or Penalty.
+        scheduler: LR schedule policy ('cosine', 'plateau', or 'none').
+        min_lr: Minimum learning rate floor for schedulers.
+        warmup_epochs: Number of epochs for linear warmup (if using warmup).
         device: Device identifier string ('cuda' or 'cpu').
         checkpoints_dir: Path to storage experiments weights.
     """
@@ -135,6 +138,9 @@ class TrainingConfig(BaseModel):
     patience: int = Field(default=3, ge=1)
     learning_rate: float = Field(default=1e-3, gt=0)
     weight_decay: float = Field(default=1e-4, ge=0.0)
+    scheduler: str = Field(default="cosine")
+    min_lr: float = Field(default=1e-5, ge=0.0)
+    warmup_epochs: int = Field(default=0, ge=0)
     num_workers: int = Field(default=2, ge=1)
     cpu_resources_per_worker: float = Field(default=2.0, ge=1.0)
     gpu_resources_per_worker: float = Field(default=0.5, ge=0.0)
@@ -149,6 +155,9 @@ class TrainingConfig(BaseModel):
   patience: {self.patience}
   learning_rate: {self.learning_rate}
   weight_decay: {self.weight_decay}
+  scheduler: {self.scheduler}
+  min_lr: {self.min_lr}
+  warmup_epochs: {self.warmup_epochs}
   device: {self.device}"""
 
 

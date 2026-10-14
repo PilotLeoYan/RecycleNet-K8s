@@ -57,6 +57,7 @@ class LogModel:
         valid_loss: float,
         valid_metrics: dict[str, float],
         step: int,
+        lr: float | None = None,
     ) -> None:
         """Log training and validation metrics for a specific epoch step.
 
@@ -66,19 +67,24 @@ class LogModel:
             valid_metrics: Dictionary containing accuracy, precision, recall, and
                 f1_score.
             step: Epoch index (step) for MLflow metric history.
+            lr: Optional learning rate value for the current epoch.
         """
         if not mlflow.active_run():
             return
 
+        metrics: dict[str, float] = {
+            "train_loss": train_loss,
+            "valid_loss": valid_loss,
+            "valid_accuracy": valid_metrics["accuracy"],
+            "valid_precision": valid_metrics["precision"],
+            "valid_recall": valid_metrics["recall"],
+            "valid_f1_score": valid_metrics["f1_score"],
+        }
+        if lr is not None:
+            metrics["learning_rate"] = lr
+
         mlflow.log_metrics(
-            {
-                "train_loss": train_loss,
-                "valid_loss": valid_loss,
-                "valid_accuracy": valid_metrics["accuracy"],
-                "valid_precision": valid_metrics["precision"],
-                "valid_recall": valid_metrics["recall"],
-                "valid_f1_score": valid_metrics["f1_score"],
-            },
+            metrics,
             step=step,
         )
 
