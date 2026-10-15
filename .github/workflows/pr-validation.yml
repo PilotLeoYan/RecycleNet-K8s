@@ -13,6 +13,10 @@ on:
       - unlabeled
       - ready_for_review
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 # This check reads only the pull request event payload; it needs no token permissions.
 permissions: {}
 
@@ -34,6 +38,13 @@ jobs:
           import os
           import re
           import sys
+
+          # Dependabot PRs are automated; their labels are configured declaratively
+          # in .github/dependabot.yml and applied asynchronously after PR creation.
+          # They use release notes instead of the repository PR template.
+          if os.environ.get("PR_AUTHOR") == "dependabot[bot]":
+              print("Dependabot PR detected: skipping PR metadata validation.")
+              sys.exit(0)
 
           body = os.environ.get("PR_BODY", "")
           labels = set(json.loads(os.environ.get("PR_LABELS", "[]")))
@@ -59,39 +70,37 @@ jobs:
                   f"Add at least one classification label to the PR: {choices}."
               )
 
-          # Dependabot uses release notes instead of the repository's PR template.
-          if os.environ.get("PR_AUTHOR") != "dependabot[bot]":
-              # Ignore template guidance comments so an untouched template cannot pass.
-              visible_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
-              headings = list(
-                  re.finditer(r"(?im)^##\s+(.+?)\s*$", visible_body)
+          # Ignore template guidance comments so an untouched template cannot pass.
+          visible_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+          headings = list(
+              re.finditer(r"(?im)^##\s+(.+?)\s*$", visible_body)
+          )
+          sections = {}
+          for index, heading in enumerate(headings):
+              name = heading.group(1).strip().lower()
+              end = headings[index + 1].start() if index + 1 < len(headings) else len(visible_body)
+              sections[name] = visible_body[heading.end():end]
+
+          missing_headings = required_sections.difference(sections)
+          if missing_headings:
+              errors.append(
+                  "Add these headings from the PR template: "
+                  + ", ".join(sorted(missing_headings))
+                  + "."
               )
-              sections = {}
-              for index, heading in enumerate(headings):
-                  name = heading.group(1).strip().lower()
-                  end = headings[index + 1].start() if index + 1 < len(headings) else len(visible_body)
-                  sections[name] = visible_body[heading.end():end]
 
-              missing_headings = required_sections.difference(sections)
-              if missing_headings:
+          for section_name in sorted(required_sections.intersection(sections)):
+              content = sections[section_name]
+              # Remove template scaffolding and empty checklist/field prompts.
+              content = re.sub(r"(?im)^\s*Closes\s+#\s*$", "", content)
+              content = re.sub(r"(?im)^\s*-\s*\[[ xX]\].*$", "", content)
+              content = re.sub(r"(?im)^\s*[-*]\s*[^:\n]+:\s*$", "", content)
+              content = re.sub(r"(?m)^\s*[-*_]{3,}\s*$", "", content)
+              if not content.strip():
                   errors.append(
-                      "Add these headings from the PR template: "
-                      + ", ".join(sorted(missing_headings))
-                      + "."
+                      f"Add a short response under the '{section_name}' heading. "
+                      "Use 'None' if there is no risk or follow-up."
                   )
-
-              for section_name in sorted(required_sections.intersection(sections)):
-                  content = sections[section_name]
-                  # Remove template scaffolding and empty checklist/field prompts.
-                  content = re.sub(r"(?im)^\s*Closes\s+#\s*$", "", content)
-                  content = re.sub(r"(?im)^\s*-\s*\[[ xX]\].*$", "", content)
-                  content = re.sub(r"(?im)^\s*[-*]\s*[^:\n]+:\s*$", "", content)
-                  content = re.sub(r"(?m)^\s*[-*_]{3,}\s*$", "", content)
-                  if not content.strip():
-                      errors.append(
-                          f"Add a short response under the '{section_name}' heading. "
-                          "Use 'None' if there is no risk or follow-up."
-                      )
 
           if errors:
               print("PR metadata validation failed:")
