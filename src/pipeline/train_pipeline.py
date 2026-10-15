@@ -3,6 +3,7 @@
 import gc
 import os
 import tempfile
+from datetime import datetime
 from typing import Any
 
 import numpy as np
@@ -77,6 +78,7 @@ def train_loop_per_worker(
 
         best_vloss = float("inf")
         best_model_weights = None
+        history: list[dict[str, Any]] = []
 
         for epoch in range(config["epochs"]):
             sampler = getattr(train_loader, "sampler", None)
@@ -84,6 +86,7 @@ def train_loop_per_worker(
                 sampler.set_epoch(epoch)
 
             metrics = trainer.train_valid_step()
+            history.append(metrics)
 
             logger.info(
                 "Epoch [%d/%d] - train_loss: %.4f - valid_loss: %.4f - "
@@ -180,6 +183,46 @@ class TrainPipeline:
             seed=config.reproducibility.torch_seed,
         )
 
+    def _log_test_evaluation(self, test_record: dict[str, Any]) -> None:
+        """Log test evaluation metrics and confusion matrix to MLflow.
+
+        Args:
+            test_record: Dictionary containing test metrics and optional
+                confusion matrix.
+        """
+        fig_cm = test_record.get("confusion_matrix")
+        if fig_cm is not None and not isinstance(fig_cm, Figure):
+            fig_cm = None
+
+        test_metrics = {
+            "test_loss": float(test_record["test_loss"]),
+            "accuracy": float(
+                test_record.get("accuracy", test_record.get("test_accuracy", 0.0))
+            ),
+            "precision": float(
+                test_record.get("precision", test_record.get("test_precision", 0.0))
+            ),
+            "recall": float(
+                test_record.get("recall", test_record.get("test_recall", 0.0))
+            ),
+            "f1_score": float(
+                test_record.get("f1_score", test_record.get("test_f1_score", 0.0))
+            ),
+        }
+        self.logmodel.log_test(
+            roc=float(test_record.get("auc", 0.0)),
+            metrics=test_metrics,
+            fig_cm=fig_cm,
+        )
+        logger.info(
+            "MLflow Test Evaluation Logged - test_loss: %.4f, "
+            "test_acc: %.4f, test_f1: %.4f, test_roc: %.4f",
+            test_metrics["test_loss"],
+            test_metrics["accuracy"],
+            test_metrics["f1_score"],
+            float(test_record.get("auc", 0.0)),
+        )
+
     def run(self) -> None:
         """Execute the distributed training, logging, and evaluation workflow.
 
@@ -213,8 +256,11 @@ class TrainPipeline:
                 max_failures=0,
             )
 
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            run_name = f"{self.config.tracking.experiment_name}_{timestamp}"
+
             run_config = RunConfig(
-                name=self.config.tracking.experiment_name,
+                name=run_name,
                 checkpoint_config=checkpoint_config,
                 failure_config=failure_config,
             )
@@ -279,6 +325,8 @@ class TrainPipeline:
                         "Ray training completed without generating a valid checkpoint."
                     )
 
+                test_logged = False
+
                 if (
                     results.metrics_dataframe is not None
                     and not results.metrics_dataframe.empty
@@ -319,34 +367,13 @@ class TrainPipeline:
                             epoch_step += 1
 
                         if (
-                            "test_loss" in record
+                            not test_logged
+                            and "test_loss" in record
                             and record["test_loss"] is not None
                             and not np.isnan(record["test_loss"])
                         ):
-                            fig_cm = record.get("confusion_matrix")
-                            if fig_cm is not None and not isinstance(fig_cm, Figure):
-                                fig_cm = None
-
-                            test_metrics = {
-                                "test_loss": float(record["test_loss"]),
-                                "accuracy": float(record.get("test_accuracy", 0.0)),
-                                "precision": float(record.get("test_precision", 0.0)),
-                                "recall": float(record.get("test_recall", 0.0)),
-                                "f1_score": float(record.get("test_f1_score", 0.0)),
-                            }
-                            self.logmodel.log_test(
-                                roc=float(record.get("auc", 0.0)),
-                                metrics=test_metrics,
-                                fig_cm=fig_cm,
-                            )
-                            logger.info(
-                                "MLflow Test Evaluation Logged - test_loss: %.4f, "
-                                "test_acc: %.4f, test_f1: %.4f, test_roc: %.4f",
-                                test_metrics["test_loss"],
-                                test_metrics["accuracy"],
-                                test_metrics["f1_score"],
-                                float(record.get("auc", 0.0)),
-                            )
+                            self._log_test_evaluation(record)
+                            test_logged = True
                 elif results.metrics:
                     last_metrics = results.metrics
                     if "train_loss" in last_metrics and "valid_loss" in last_metrics:
@@ -367,27 +394,23 @@ class TrainPipeline:
                             },
                             step=0,
                         )
-                    if "test_loss" in last_metrics:
-                        fig_cm = last_metrics.get("confusion_matrix")
-                        if fig_cm is not None and not isinstance(fig_cm, Figure):
-                            fig_cm = None
-                        self.logmodel.log_test(
-                            roc=float(last_metrics.get("auc", 0.0)),
-                            metrics={
-                                "test_loss": float(last_metrics["test_loss"]),
-                                "accuracy": float(
-                                    last_metrics.get("test_accuracy", 0.0)
-                                ),
-                                "precision": float(
-                                    last_metrics.get("test_precision", 0.0)
-                                ),
-                                "recall": float(last_metrics.get("test_recall", 0.0)),
-                                "f1_score": float(
-                                    last_metrics.get("test_f1_score", 0.0)
-                                ),
-                            },
-                            fig_cm=fig_cm,
-                        )
+                    if (
+                        not test_logged
+                        and "test_loss" in last_metrics
+                        and last_metrics["test_loss"] is not None
+                    ):
+                        self._log_test_evaluation(last_metrics)
+                        test_logged = True
+
+                # Ensure test evaluation metrics reported by rank 0 are always logged
+                if (
+                    not test_logged
+                    and results.metrics
+                    and "test_loss" in results.metrics
+                    and results.metrics["test_loss"] is not None
+                ):
+                    self._log_test_evaluation(results.metrics)
+                    test_logged = True
 
                 logger.info("Restoring best model checkpoint for model registry...")
                 best_model = build_mobilenet_v3(num_classes)
