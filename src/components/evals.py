@@ -81,9 +81,12 @@ class TestDistributed:
         col_sums = cm.sum(axis=0)
         row_sums = cm.sum(axis=1)
 
-        precision = float((tp / np.maximum(col_sums, 1)).mean())
-        recall = float((tp / np.maximum(row_sums, 1)).mean())
-        f1_score = float(2.0 * (precision * recall) / (precision + recall + 1e-8))
+        precision = float((tp / np.maximum(col_sums, 1)).mean()) if len(tp) > 0 else 0.0
+        recall = float((tp / np.maximum(row_sums, 1)).mean()) if len(tp) > 0 else 0.0
+
+        support = col_sums + row_sums
+        f1_per_class = np.where(support > 0, 2.0 * tp / np.maximum(support, 1), 0.0)
+        f1_score = float(f1_per_class.mean()) if len(f1_per_class) > 0 else 0.0
 
         display_labels = (
             self.classes_name
