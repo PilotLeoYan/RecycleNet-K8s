@@ -376,3 +376,80 @@ def test_train_pipeline_run_non_figure_cm_handled(
     mock_logmodel.log_test.assert_called_once()
     _, kwargs = mock_logmodel.log_test.call_args
     assert kwargs.get("fig_cm") is None
+
+
+def test_train_pipeline_run_test_loss_logged_from_results_metrics(
+    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test test_loss is logged from results.metrics when metrics_df has no test
+    rows.
+    """
+    pipeline = TrainPipeline(mock_app_config)
+
+    dataset_dir = tmp_path / "extracted_data"
+    cardboard_dir = dataset_dir / "cardboard"
+    cardboard_dir.mkdir(parents=True)
+    dummy_img = Image.new("RGB", (16, 16), color="red")
+    dummy_img.save(cardboard_dir / "img1.png")
+    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
+
+    ckpt_dir = tmp_path / "ckpt"
+    ckpt_dir.mkdir(parents=True)
+    dummy_model = build_mobilenet_v3(1)
+    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
+
+    class MockCheckpoint:
+        @contextmanager
+        def as_directory(self) -> Generator[str]:
+            yield str(ckpt_dir)
+
+    # metrics_df only contains epoch checkpoints (as when num_to_keep=1)
+    metrics_df = pd.DataFrame(
+        [
+            {
+                "train_loss": 0.5,
+                "valid_loss": 0.4,
+                "valid_accuracy": 0.8,
+                "valid_precision": 0.8,
+                "valid_recall": 0.8,
+                "valid_f1_score": 0.8,
+            }
+        ]
+    )
+
+    mock_result = MagicMock()
+    mock_result.checkpoint = MockCheckpoint()
+    mock_result.metrics_dataframe = metrics_df
+    # results.metrics contains test metrics reported by rank 0 worker
+    mock_result.metrics = {
+        "test_loss": 0.35,
+        "test_accuracy": 0.85,
+        "test_precision": 0.82,
+        "test_recall": 0.84,
+        "test_f1_score": 0.83,
+        "auc": 0.91,
+        "confusion_matrix": None,
+    }
+
+    mock_logmodel = MagicMock()
+    mock_run = MagicMock()
+    mock_run.info.run_id = "test-metrics-fallback-run"
+
+    @contextmanager
+    def run_context() -> Generator[MagicMock]:
+        yield mock_run
+
+    mock_logmodel.start_run.return_value = run_context()
+    pipeline.logmodel = mock_logmodel
+
+    with patch(
+        "src.pipeline.train_pipeline.TorchTrainer.fit",
+        return_value=mock_result,
+    ):
+        pipeline.run()
+
+    assert mock_logmodel.log_epoch.called
+    assert mock_logmodel.log_test.called
+    _, kwargs = mock_logmodel.log_test.call_args
+    assert kwargs.get("roc") == 0.91
+    assert kwargs.get("metrics")["test_loss"] == 0.35
