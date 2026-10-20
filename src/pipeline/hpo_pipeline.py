@@ -21,7 +21,7 @@ from src.components.train_step import TrainStep
 from src.config import AppConfig, TransformationConfig
 from src.pipeline.ray_resources import assign_ray_resources
 from src.pipeline.reproducibility import make_reproducibility
-from src.utils import RecycleNetException, get_logger
+from src.utils import RecycleNetException, get_logger, resolve_tracking_uri
 
 logger = get_logger(__name__)
 
@@ -322,7 +322,9 @@ class HPOPipeline:
                 "tracking": {
                     "experiment_name": self.config.tracking.experiment_name,
                     "registered_model_name": self.config.tracking.registered_model_name,
-                    "tracking_uri": self.config.tracking.tracking_uri,
+                    "tracking_uri": resolve_tracking_uri(
+                        self.config.tracking.tracking_uri
+                    ),
                     "tags": dict(self.config.tracking.tags),
                 },
                 "hpo": {

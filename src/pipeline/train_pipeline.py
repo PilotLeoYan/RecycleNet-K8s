@@ -6,7 +6,7 @@ import tempfile
 from datetime import datetime
 from typing import Any
 
-import numpy as np
+import matplotlib.pyplot as plt
 import ray.train
 import ray.train.torch
 import torch
@@ -34,9 +34,50 @@ from src.components.train_step import TrainStep
 from src.config.schema import AppConfig
 from src.pipeline.ray_resources import assign_ray_resources
 from src.pipeline.reproducibility import make_reproducibility
-from src.utils import RecycleNetException, get_logger
+from src.utils import RecycleNetException, get_logger, resolve_tracking_uri
 
 logger = get_logger(__name__)
+
+
+def _log_test_metrics_to_mlflow(
+    client: MlflowClient,
+    run_id: str,
+    eval_metrics: dict[str, Any],
+) -> None:
+    """Log final test metrics, per-class metrics and confusion matrix.
+
+    Runs on the rank-0 worker, since Ray Train v2 does not expose metrics of
+    reports that carry no checkpoint to the driver.
+
+    Args:
+        client: MLflow client bound to the tracking URI.
+        run_id: Active MLflow run identifier created by the driver.
+        eval_metrics: Output of ``compute_distributed_test_metrics``.
+    """
+    metrics: dict[str, float] = {
+        "test_roc": float(eval_metrics.get("auc", 0.0)),
+        "test_accuracy": float(eval_metrics.get("test_accuracy", 0.0)),
+        "test_precision": float(eval_metrics.get("test_precision", 0.0)),
+        "test_recall": float(eval_metrics.get("test_recall", 0.0)),
+        "test_f1_score": float(eval_metrics.get("test_f1_score", 0.0)),
+    }
+    if eval_metrics.get("test_loss") is not None:
+        metrics["test_loss"] = float(eval_metrics["test_loss"])
+
+    per_class = eval_metrics.get("per_class_metrics")
+    if per_class:
+        client.log_dict(run_id, per_class, "per_class_metrics.json")
+        for cls_name, vals in per_class.items():
+            metrics[f"test_f1_{cls_name}"] = float(vals["f1_score"])
+            metrics[f"test_recall_{cls_name}"] = float(vals["recall"])
+
+    for key, value in metrics.items():
+        client.log_metric(run_id=run_id, key=key, value=value)
+
+    fig_cm = eval_metrics.get("confusion_matrix")
+    if isinstance(fig_cm, Figure):
+        client.log_figure(run_id, fig_cm, "confusion_matrix.png")
+        plt.close(fig_cm)
 
 
 def train_loop_per_worker(
@@ -149,8 +190,8 @@ def train_loop_per_worker(
                             step=epoch,
                         )
                 except Exception as exc:
-                    logger.debug(
-                        "Real-time MLflow worker metric logging skipped: %s", exc
+                    logger.warning(
+                        "Real-time MLflow worker metric logging failed: %s", exc
                     )
 
             # --- Early stopping check ---
@@ -213,6 +254,21 @@ def train_loop_per_worker(
             device=worker_device,
         )
         eval_metrics = test_distributed.compute_distributed_test_metrics()
+
+        if (
+            world_rank == 0
+            and config.get("mlflow_run_id")
+            and config.get("tracking_uri")
+        ):
+            try:
+                _log_test_metrics_to_mlflow(
+                    MlflowClient(tracking_uri=config["tracking_uri"]),
+                    config["mlflow_run_id"],
+                    eval_metrics,
+                )
+            except Exception as exc:
+                logger.warning("Worker MLflow test metric logging failed: %s", exc)
+
         eval_metrics["history"] = history
         ray.train.report(eval_metrics)
 
@@ -248,47 +304,6 @@ class TrainPipeline:
         self.transformation = DataTransformation(
             config.transformation,
             seed=config.reproducibility.torch_seed,
-        )
-
-    def _log_test_evaluation(self, test_record: dict[str, Any]) -> None:
-        """Log test evaluation metrics and confusion matrix to MLflow.
-
-        Args:
-            test_record: Dictionary containing test metrics and optional
-                confusion matrix.
-        """
-        fig_cm = test_record.get("confusion_matrix")
-        if fig_cm is not None and not isinstance(fig_cm, Figure):
-            fig_cm = None
-
-        test_metrics = {
-            "test_loss": float(test_record["test_loss"]),
-            "accuracy": float(
-                test_record.get("accuracy", test_record.get("test_accuracy", 0.0))
-            ),
-            "precision": float(
-                test_record.get("precision", test_record.get("test_precision", 0.0))
-            ),
-            "recall": float(
-                test_record.get("recall", test_record.get("test_recall", 0.0))
-            ),
-            "f1_score": float(
-                test_record.get("f1_score", test_record.get("test_f1_score", 0.0))
-            ),
-        }
-        self.logmodel.log_test(
-            roc=float(test_record.get("auc", 0.0)),
-            metrics=test_metrics,
-            fig_cm=fig_cm,
-            per_class_metrics=test_record.get("per_class_metrics"),
-        )
-        logger.info(
-            "MLflow Test Evaluation Logged - test_loss: %.4f, "
-            "test_acc: %.4f, test_f1: %.4f, test_roc: %.4f",
-            test_metrics["test_loss"],
-            test_metrics["accuracy"],
-            test_metrics["f1_score"],
-            float(test_record.get("auc", 0.0)),
         )
 
     def run(self) -> None:
@@ -353,7 +368,7 @@ class TrainPipeline:
                 "scheduler": self.config.training.scheduler,
                 "min_lr": self.config.training.min_lr,
                 "warmup_epochs": self.config.training.warmup_epochs,
-                "tracking_uri": self.config.tracking.tracking_uri,
+                "tracking_uri": resolve_tracking_uri(self.config.tracking.tracking_uri),
             }
 
             split_dist: dict[str, Any] | None = None
@@ -411,148 +426,8 @@ class TrainPipeline:
                         "Ray training completed without generating a valid checkpoint."
                     )
 
-                test_logged = False
-
-                if (
-                    isinstance(results.metrics, dict)
-                    and isinstance(results.metrics.get("history"), list)
-                    and len(results.metrics["history"]) > 0
-                ):
-                    for epoch_step, record in enumerate(results.metrics["history"]):
-                        train_loss = float(record["train_loss"])
-                        valid_loss = float(record["valid_loss"])
-                        valid_metrics = {
-                            "accuracy": float(record.get("valid_accuracy", 0.0)),
-                            "precision": float(record.get("valid_precision", 0.0)),
-                            "recall": float(record.get("valid_recall", 0.0)),
-                            "f1_score": float(record.get("valid_f1_score", 0.0)),
-                        }
-                        lr_val = (
-                            float(record["learning_rate"])
-                            if "learning_rate" in record
-                            and record["learning_rate"] is not None
-                            else None
-                        )
-                        self.logmodel.log_epoch(
-                            train_loss=train_loss,
-                            valid_loss=valid_loss,
-                            valid_metrics=valid_metrics,
-                            step=epoch_step,
-                            lr=lr_val,
-                        )
-                        logger.info(
-                            "MLflow Epoch [%d/%d] Logged - "
-                            "train_loss: %.4f, valid_loss: %.4f, "
-                            "valid_accuracy: %.4f, valid_f1: %.4f",
-                            epoch_step + 1,
-                            self.config.training.epochs,
-                            train_loss,
-                            valid_loss,
-                            valid_metrics["accuracy"],
-                            valid_metrics["f1_score"],
-                        )
-                elif (
-                    results.metrics_dataframe is not None
-                    and not results.metrics_dataframe.empty
-                ):
-                    records = results.metrics_dataframe.to_dict(orient="records")
-                    epoch_step = 0
-                    for record in records:
-                        if (
-                            "train_loss" in record
-                            and record["train_loss"] is not None
-                            and not np.isnan(record["train_loss"])
-                        ):
-                            train_loss = float(record["train_loss"])
-                            valid_loss = float(record["valid_loss"])
-                            valid_metrics = {
-                                "accuracy": float(record.get("valid_accuracy", 0.0)),
-                                "precision": float(record.get("valid_precision", 0.0)),
-                                "recall": float(record.get("valid_recall", 0.0)),
-                                "f1_score": float(record.get("valid_f1_score", 0.0)),
-                            }
-                            lr_val = (
-                                float(record["learning_rate"])
-                                if "learning_rate" in record
-                                and record["learning_rate"] is not None
-                                and not (
-                                    isinstance(record["learning_rate"], float)
-                                    and np.isnan(record["learning_rate"])
-                                )
-                                else None
-                            )
-                            self.logmodel.log_epoch(
-                                train_loss=train_loss,
-                                valid_loss=valid_loss,
-                                valid_metrics=valid_metrics,
-                                step=epoch_step,
-                                lr=lr_val,
-                            )
-                            logger.info(
-                                "MLflow Epoch [%d/%d] Logged - "
-                                "train_loss: %.4f, valid_loss: %.4f, "
-                                "valid_accuracy: %.4f, valid_f1: %.4f",
-                                epoch_step + 1,
-                                self.config.training.epochs,
-                                train_loss,
-                                valid_loss,
-                                valid_metrics["accuracy"],
-                                valid_metrics["f1_score"],
-                            )
-                            epoch_step += 1
-
-                        if (
-                            not test_logged
-                            and "test_loss" in record
-                            and record["test_loss"] is not None
-                            and not np.isnan(record["test_loss"])
-                        ):
-                            self._log_test_evaluation(record)
-                            test_logged = True
-                elif results.metrics:
-                    last_metrics = results.metrics
-                    if "train_loss" in last_metrics and "valid_loss" in last_metrics:
-                        lr_val = (
-                            float(last_metrics["learning_rate"])
-                            if "learning_rate" in last_metrics
-                            and last_metrics["learning_rate"] is not None
-                            else None
-                        )
-                        self.logmodel.log_epoch(
-                            train_loss=float(last_metrics["train_loss"]),
-                            valid_loss=float(last_metrics["valid_loss"]),
-                            valid_metrics={
-                                "accuracy": float(
-                                    last_metrics.get("valid_accuracy", 0.0)
-                                ),
-                                "precision": float(
-                                    last_metrics.get("valid_precision", 0.0)
-                                ),
-                                "recall": float(last_metrics.get("valid_recall", 0.0)),
-                                "f1_score": float(
-                                    last_metrics.get("valid_f1_score", 0.0)
-                                ),
-                            },
-                            step=0,
-                            lr=lr_val,
-                        )
-                    if (
-                        not test_logged
-                        and "test_loss" in last_metrics
-                        and last_metrics["test_loss"] is not None
-                    ):
-                        self._log_test_evaluation(last_metrics)
-                        test_logged = True
-
-                # Ensure test evaluation metrics reported by rank 0 are always logged
-                if (
-                    not test_logged
-                    and results.metrics
-                    and "test_loss" in results.metrics
-                    and results.metrics["test_loss"] is not None
-                ):
-                    self._log_test_evaluation(results.metrics)
-                    test_logged = True
+                # Epoch and test metrics are logged by the rank-0 worker, because
+                # Ray Train v2 only keeps metrics of checkpointed reports.
 
                 logger.info("Restoring best model checkpoint for model registry...")
                 best_model = build_mobilenet_v3(num_classes)

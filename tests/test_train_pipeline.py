@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 import torch
+from matplotlib.figure import Figure
 from PIL import Image
 
 from src.components.model import build_mobilenet_v3
@@ -19,7 +20,12 @@ from src.config.schema import (
     TrainingConfig,
     TransformationConfig,
 )
-from src.pipeline.train_pipeline import TrainPipeline, train_loop_per_worker
+from src.pipeline.train_pipeline import (
+    TrainPipeline,
+    _log_test_metrics_to_mlflow,
+    train_loop_per_worker,
+)
+from src.utils import resolve_tracking_uri
 from src.utils.exception import RecycleNetException
 
 
@@ -154,8 +160,8 @@ def test_train_pipeline_run_success(
     assert "min_lr" in meta_kwargs["params"]
     assert "warmup_epochs" in meta_kwargs["params"]
     assert "split_distribution" in meta_kwargs
-    assert mock_logmodel.log_epoch.call_count == 2
-    assert mock_logmodel.log_test.called
+    # Epoch/test metrics are logged by the rank-0 worker, not the driver.
+    assert not mock_logmodel.log_epoch.called
     assert mock_logmodel.register_checkpoint.called
 
 
@@ -246,67 +252,6 @@ def test_train_loop_per_worker_execution(tmp_path: Path) -> None:
         assert final_report["history"][0]["learning_rate"] == 0.001
 
 
-def test_train_pipeline_run_fallback_metrics(
-    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test TrainPipeline.run handles fallback when metrics_dataframe is None."""
-    pipeline = TrainPipeline(mock_app_config)
-
-    dataset_dir = tmp_path / "extracted_data"
-    cardboard_dir = dataset_dir / "cardboard"
-    glass_dir = dataset_dir / "glass"
-    cardboard_dir.mkdir(parents=True)
-    glass_dir.mkdir(parents=True)
-
-    dummy_img = Image.new("RGB", (16, 16), color="red")
-    dummy_img.save(cardboard_dir / "img1.png")
-    dummy_img.save(glass_dir / "img1.png")
-    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
-
-    ckpt_dir = tmp_path / "ckpt"
-    ckpt_dir.mkdir(parents=True)
-    dummy_model = build_mobilenet_v3(2)
-    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
-
-    class MockCheckpoint:
-        @contextmanager
-        def as_directory(self) -> Generator[str]:
-            yield str(ckpt_dir)
-
-    mock_result = MagicMock()
-    mock_result.checkpoint = MockCheckpoint()
-    mock_result.metrics_dataframe = None
-    mock_result.metrics = {
-        "train_loss": 0.35,
-        "valid_loss": 0.28,
-        "valid_accuracy": 0.90,
-        "test_loss": 0.20,
-        "test_accuracy": 0.93,
-        "auc": 0.96,
-    }
-
-    mock_logmodel = MagicMock()
-    mock_run = MagicMock()
-    mock_run.info.run_id = "test-fallback-run"
-
-    @contextmanager
-    def run_context() -> Generator[MagicMock]:
-        yield mock_run
-
-    mock_logmodel.start_run.return_value = run_context()
-    pipeline.logmodel = mock_logmodel
-
-    with patch(
-        "src.pipeline.train_pipeline.TorchTrainer.fit",
-        return_value=mock_result,
-    ):
-        pipeline.run()
-
-    assert mock_logmodel.log_epoch.called
-    assert mock_logmodel.log_test.called
-    assert mock_logmodel.register_checkpoint.called
-
-
 def test_train_pipeline_run_trainer_fit_exception_raises(
     mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -326,240 +271,6 @@ def test_train_pipeline_run_trainer_fit_exception_raises(
     ):
         with pytest.raises(RecycleNetException, match="Failure during the distributed"):
             pipeline.run()
-
-
-def test_train_pipeline_run_non_figure_cm_handled(
-    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test TrainPipeline.run safely replaces non-Figure CM objects with None."""
-    pipeline = TrainPipeline(mock_app_config)
-
-    dataset_dir = tmp_path / "extracted_data"
-    cardboard_dir = dataset_dir / "cardboard"
-    cardboard_dir.mkdir(parents=True)
-    dummy_img = Image.new("RGB", (16, 16), color="red")
-    dummy_img.save(cardboard_dir / "img1.png")
-    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
-
-    ckpt_dir = tmp_path / "ckpt"
-    ckpt_dir.mkdir(parents=True)
-    dummy_model = build_mobilenet_v3(1)
-    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
-
-    class MockCheckpoint:
-        @contextmanager
-        def as_directory(self) -> Generator[str]:
-            yield str(ckpt_dir)
-
-    metrics_df = pd.DataFrame(
-        [
-            {
-                "test_loss": 0.15,
-                "test_accuracy": 0.95,
-                "auc": 0.98,
-                "confusion_matrix": "not_a_figure_instance",
-            }
-        ]
-    )
-
-    mock_result = MagicMock()
-    mock_result.checkpoint = MockCheckpoint()
-    mock_result.metrics_dataframe = metrics_df
-
-    mock_logmodel = MagicMock()
-    mock_run = MagicMock()
-    mock_run.info.run_id = "test-non-figure-cm-run"
-
-    @contextmanager
-    def run_context() -> Generator[MagicMock]:
-        yield mock_run
-
-    mock_logmodel.start_run.return_value = run_context()
-    pipeline.logmodel = mock_logmodel
-
-    with patch(
-        "src.pipeline.train_pipeline.TorchTrainer.fit",
-        return_value=mock_result,
-    ):
-        pipeline.run()
-
-    mock_logmodel.log_test.assert_called_once()
-    _, kwargs = mock_logmodel.log_test.call_args
-    assert kwargs.get("fig_cm") is None
-
-
-def test_train_pipeline_run_test_loss_logged_from_results_metrics(
-    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test test_loss is logged from results.metrics when metrics_df has no test
-    rows.
-    """
-    pipeline = TrainPipeline(mock_app_config)
-
-    dataset_dir = tmp_path / "extracted_data"
-    cardboard_dir = dataset_dir / "cardboard"
-    cardboard_dir.mkdir(parents=True)
-    dummy_img = Image.new("RGB", (16, 16), color="red")
-    dummy_img.save(cardboard_dir / "img1.png")
-    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
-
-    ckpt_dir = tmp_path / "ckpt"
-    ckpt_dir.mkdir(parents=True)
-    dummy_model = build_mobilenet_v3(1)
-    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
-
-    class MockCheckpoint:
-        @contextmanager
-        def as_directory(self) -> Generator[str]:
-            yield str(ckpt_dir)
-
-    # metrics_df only contains epoch checkpoints (as when num_to_keep=1)
-    metrics_df = pd.DataFrame(
-        [
-            {
-                "train_loss": 0.5,
-                "valid_loss": 0.4,
-                "valid_accuracy": 0.8,
-                "valid_precision": 0.8,
-                "valid_recall": 0.8,
-                "valid_f1_score": 0.8,
-            }
-        ]
-    )
-
-    mock_result = MagicMock()
-    mock_result.checkpoint = MockCheckpoint()
-    mock_result.metrics_dataframe = metrics_df
-    # results.metrics contains test metrics reported by rank 0 worker
-    mock_result.metrics = {
-        "test_loss": 0.35,
-        "test_accuracy": 0.85,
-        "test_precision": 0.82,
-        "test_recall": 0.84,
-        "test_f1_score": 0.83,
-        "auc": 0.91,
-        "confusion_matrix": None,
-    }
-
-    mock_logmodel = MagicMock()
-    mock_run = MagicMock()
-    mock_run.info.run_id = "test-metrics-fallback-run"
-
-    @contextmanager
-    def run_context() -> Generator[MagicMock]:
-        yield mock_run
-
-    mock_logmodel.start_run.return_value = run_context()
-    pipeline.logmodel = mock_logmodel
-
-    with patch(
-        "src.pipeline.train_pipeline.TorchTrainer.fit",
-        return_value=mock_result,
-    ):
-        pipeline.run()
-
-    assert mock_logmodel.log_epoch.called
-    assert mock_logmodel.log_test.called
-    _, kwargs = mock_logmodel.log_test.call_args
-    assert kwargs.get("roc") == 0.91
-    assert kwargs.get("metrics")["test_loss"] == 0.35
-
-
-def test_train_pipeline_logs_full_epoch_history_when_num_to_keep_is_one(
-    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test full epoch history is logged when metrics_dataframe has 1 row."""
-    pipeline = TrainPipeline(mock_app_config)
-
-    dataset_dir = tmp_path / "extracted_data"
-    cardboard_dir = dataset_dir / "cardboard"
-    cardboard_dir.mkdir(parents=True)
-    dummy_img = Image.new("RGB", (16, 16), color="red")
-    dummy_img.save(cardboard_dir / "img1.png")
-    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
-
-    ckpt_dir = tmp_path / "ckpt"
-    ckpt_dir.mkdir(parents=True)
-    dummy_model = build_mobilenet_v3(1)
-    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
-
-    class MockCheckpoint:
-        @contextmanager
-        def as_directory(self) -> Generator[str]:
-            yield str(ckpt_dir)
-
-    # Simulate Ray Train CheckpointConfig(num_to_keep=1) retaining only 1 row
-    metrics_df = pd.DataFrame(
-        [
-            {
-                "train_loss": 0.25,
-                "valid_loss": 0.20,
-                "valid_accuracy": 0.92,
-                "valid_precision": 0.91,
-                "valid_recall": 0.90,
-                "valid_f1_score": 0.905,
-            }
-        ]
-    )
-
-    mock_result = MagicMock()
-    mock_result.checkpoint = MockCheckpoint()
-    mock_result.metrics_dataframe = metrics_df
-    mock_result.metrics = {
-        "test_loss": 0.18,
-        "test_accuracy": 0.94,
-        "auc": 0.97,
-        "history": [
-            {
-                "train_loss": 0.50,
-                "valid_loss": 0.45,
-                "valid_accuracy": 0.78,
-                "valid_precision": 0.77,
-                "valid_recall": 0.76,
-                "valid_f1_score": 0.765,
-            },
-            {
-                "train_loss": 0.35,
-                "valid_loss": 0.30,
-                "valid_accuracy": 0.85,
-                "valid_precision": 0.84,
-                "valid_recall": 0.83,
-                "valid_f1_score": 0.835,
-            },
-            {
-                "train_loss": 0.25,
-                "valid_loss": 0.20,
-                "valid_accuracy": 0.92,
-                "valid_precision": 0.91,
-                "valid_recall": 0.90,
-                "valid_f1_score": 0.905,
-            },
-        ],
-    }
-
-    mock_logmodel = MagicMock()
-    mock_run = MagicMock()
-    mock_run.info.run_id = "test-full-history-run"
-
-    @contextmanager
-    def run_context() -> Generator[MagicMock]:
-        yield mock_run
-
-    mock_logmodel.start_run.return_value = run_context()
-    pipeline.logmodel = mock_logmodel
-
-    with patch(
-        "src.pipeline.train_pipeline.TorchTrainer.fit",
-        return_value=mock_result,
-    ):
-        pipeline.run()
-
-    assert mock_logmodel.log_epoch.call_count == 3
-    logged_steps = [
-        call.kwargs["step"] for call in mock_logmodel.log_epoch.call_args_list
-    ]
-    assert logged_steps == [0, 1, 2]
-    assert mock_logmodel.log_test.called
 
 
 def test_train_loop_per_worker_early_stopping(tmp_path: Path) -> None:
@@ -707,64 +418,38 @@ def test_train_loop_per_worker_plateau_scheduler(tmp_path: Path) -> None:
         assert final_report["history"][0]["learning_rate"] == 0.001
 
 
-def test_train_pipeline_logs_per_class_metrics(
-    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test TrainPipeline passes per_class_metrics to logmodel.log_test."""
-    pipeline = TrainPipeline(mock_app_config)
+def test_log_test_metrics_to_mlflow_logs_all_metrics() -> None:
+    """Worker helper logs test metrics, per-class JSON and confusion matrix."""
+    fig = Figure()
+    client = MagicMock()
+    per_class = {"glass": {"precision": 0.9, "recall": 0.8, "f1_score": 0.85}}
+    _log_test_metrics_to_mlflow(
+        client,
+        "run-1",
+        {
+            "test_loss": 0.2,
+            "test_accuracy": 0.9,
+            "auc": 0.95,
+            "per_class_metrics": per_class,
+            "confusion_matrix": fig,
+        },
+    )
 
-    dataset_dir = tmp_path / "extracted_data"
-    cardboard_dir = dataset_dir / "cardboard"
-    cardboard_dir.mkdir(parents=True)
-    dummy_img = Image.new("RGB", (16, 16), color="red")
-    dummy_img.save(cardboard_dir / "img1.png")
-    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
-
-    ckpt_dir = tmp_path / "ckpt"
-    ckpt_dir.mkdir(parents=True)
-    dummy_model = build_mobilenet_v3(1)
-    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
-
-    class MockCheckpoint:
-        @contextmanager
-        def as_directory(self) -> Generator[str]:
-            yield str(ckpt_dir)
-
-    per_class = {
-        "cardboard": {
-            "precision": 0.9,
-            "recall": 0.85,
-            "f1_score": 0.87,
-            "support": 10,
-        }
+    logged = {
+        c.kwargs["key"]: c.kwargs["value"] for c in client.log_metric.call_args_list
     }
-    mock_result = MagicMock()
-    mock_result.checkpoint = MockCheckpoint()
-    mock_result.metrics_dataframe = None
-    mock_result.metrics = {
-        "test_loss": 0.20,
-        "test_accuracy": 0.93,
-        "auc": 0.96,
-        "per_class_metrics": per_class,
-    }
+    assert logged["test_loss"] == 0.2
+    assert logged["test_roc"] == 0.95
+    assert logged["test_f1_glass"] == 0.85
+    client.log_dict.assert_called_once_with(
+        "run-1", per_class, "per_class_metrics.json"
+    )
+    client.log_figure.assert_called_once()
 
-    mock_logmodel = MagicMock()
-    mock_run = MagicMock()
-    mock_run.info.run_id = "test-per-class-run"
 
-    @contextmanager
-    def run_context() -> Generator[MagicMock]:
-        yield mock_run
-
-    mock_logmodel.start_run.return_value = run_context()
-    pipeline.logmodel = mock_logmodel
-
-    with patch(
-        "src.pipeline.train_pipeline.TorchTrainer.fit",
-        return_value=mock_result,
-    ):
-        pipeline.run()
-
-    mock_logmodel.log_test.assert_called_once()
-    _, kwargs = mock_logmodel.log_test.call_args
-    assert kwargs.get("per_class_metrics") == per_class
+def test_resolve_tracking_uri_makes_sqlite_path_absolute() -> None:
+    """Relative SQLite URIs become absolute so Ray workers hit the same DB."""
+    uri = resolve_tracking_uri("sqlite:///mlflow.db")
+    assert uri == f"sqlite:///{Path('mlflow.db').resolve()}"
+    assert resolve_tracking_uri("http://host:5000") == "http://host:5000"
+    assert resolve_tracking_uri("sqlite:////abs/m.db") == "sqlite:////abs/m.db"
