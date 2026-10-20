@@ -17,7 +17,7 @@ from src.utils import RecycleNetException, get_logger
 
 logger = get_logger(__name__)
 
-ONNX_OPSET = 17
+ONNX_OPSET = 18
 DEFAULT_OUTPUT_PATH = Path("models/recyclenet.onnx")
 PARITY_TOLERANCE = 1e-5
 
@@ -52,11 +52,9 @@ def export_to_onnx(
             opset_version=ONNX_OPSET,
             input_names=["image"],
             output_names=["logits"],
-            dynamic_axes={
-                "image": {0: "batch_size"},
-                "logits": {0: "batch_size"},
-            },
-            dynamo=False,
+            dynamic_shapes=({0: torch.export.Dim("batch_size")},),
+            dynamo=True,
+            external_data=False,
         )
         logger.info("Model exported to ONNX at %s (opset=%d)", output_path, ONNX_OPSET)
         return output_path.resolve()
