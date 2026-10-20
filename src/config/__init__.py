@@ -2,6 +2,7 @@
 
 from .schema import (
     AppConfig,
+    ExportConfig,
     HPOConfig,
     IngestionConfig,
     ReproducibilityConfig,
@@ -18,4 +19,5 @@ __all__ = [
     "TrackingConfig",
     "AppConfig",
     "HPOConfig",
+    "ExportConfig",
 ]

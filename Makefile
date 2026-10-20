@@ -1,4 +1,4 @@
-.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test train train-best hpo export super-train mlflow format lint test check
+.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test smoke-export train train-best hpo export super-train mlflow format lint test check
 
 CONFIG ?= configs/config.yaml
 EXTRA_ARGS ?=
@@ -24,9 +24,14 @@ smoke-test:
 	$(MAKE) test
 	$(MAKE) train CONFIG=configs/smoke.yaml
 	$(MAKE) hpo CONFIG=configs/smoke.yaml
+	$(MAKE) smoke-export
 	$(MAKE) sync-dev-gpu
 	$(MAKE) train CONFIG=configs/smoke.yaml
 	$(MAKE) hpo CONFIG=configs/smoke.yaml
+	$(MAKE) smoke-export
+
+smoke-export:
+	$(MAKE) export CONFIG=configs/smoke.yaml $(EXTRA_ARGS)
 
 train:
 	$(RAY_ENV) RAY_LOGGER_LEVEL=error $(RUN_SRC) train $(EXTRA_ARGS)
