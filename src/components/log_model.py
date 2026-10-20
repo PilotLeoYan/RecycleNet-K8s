@@ -57,6 +57,7 @@ class LogModel:
         valid_loss: float,
         valid_metrics: dict[str, float],
         step: int,
+        lr: float | None = None,
     ) -> None:
         """Log training and validation metrics for a specific epoch step.
 
@@ -66,19 +67,24 @@ class LogModel:
             valid_metrics: Dictionary containing accuracy, precision, recall, and
                 f1_score.
             step: Epoch index (step) for MLflow metric history.
+            lr: Optional current learning rate for the epoch.
         """
         if not mlflow.active_run():
             return
 
+        epoch_metrics: dict[str, float] = {
+            "train_loss": train_loss,
+            "valid_loss": valid_loss,
+            "valid_accuracy": valid_metrics["accuracy"],
+            "valid_precision": valid_metrics["precision"],
+            "valid_recall": valid_metrics["recall"],
+            "valid_f1_score": valid_metrics["f1_score"],
+        }
+        if lr is not None:
+            epoch_metrics["learning_rate"] = float(lr)
+
         mlflow.log_metrics(
-            {
-                "train_loss": train_loss,
-                "valid_loss": valid_loss,
-                "valid_accuracy": valid_metrics["accuracy"],
-                "valid_precision": valid_metrics["precision"],
-                "valid_recall": valid_metrics["recall"],
-                "valid_f1_score": valid_metrics["f1_score"],
-            },
+            epoch_metrics,
             step=step,
         )
 
@@ -87,6 +93,7 @@ class LogModel:
         roc: float,
         metrics: dict[str, float],
         fig_cm: Any,
+        per_class_metrics: dict[str, Any] | None = None,
     ) -> None:
         """Log final test evaluation metrics and confusion matrix plot to MLflow.
 
@@ -94,8 +101,12 @@ class LogModel:
             roc: Area Under ROC Curve score on test dataset.
             metrics: Dictionary of test metrics (accuracy, precision, recall, f1_score).
             fig_cm: Matplotlib Figure object displaying the confusion matrix.
+            per_class_metrics: Optional dictionary mapping class names to per-class
+                precision, recall, f1_score, and support.
         """
         if not mlflow.active_run():
+            if fig_cm is not None:
+                plt.close(fig_cm)
             return
 
         metrics_to_log: dict[str, float] = {
@@ -107,6 +118,12 @@ class LogModel:
         }
         if "test_loss" in metrics:
             metrics_to_log["test_loss"] = float(metrics["test_loss"])
+
+        if per_class_metrics:
+            mlflow.log_dict(per_class_metrics, "per_class_metrics.json")
+            for cls_name, cls_vals in per_class_metrics.items():
+                metrics_to_log[f"test_f1_{cls_name}"] = float(cls_vals["f1_score"])
+                metrics_to_log[f"test_recall_{cls_name}"] = float(cls_vals["recall"])
 
         mlflow.log_metrics(metrics_to_log)
 
@@ -183,6 +200,7 @@ class LogModel:
         tags: dict[str, str],
         params: dict[str, Any],
         config_dict: dict[str, Any],
+        split_distribution: dict[str, Any] | None = None,
     ) -> None:
         """Log pipeline metadata, tags, and configuration to MLflow.
 
@@ -191,6 +209,8 @@ class LogModel:
             tags: Dictionary of MLflow run tags.
             params: Dictionary of pipeline hyperparameters and settings.
             config_dict: Serialized configuration dictionary.
+            split_distribution: Optional dictionary summarizing dataset partition
+                class distributions and zero-overlap verification.
         """
         if not mlflow.active_run():
             return
@@ -199,3 +219,5 @@ class LogModel:
         mlflow.set_tags(tags)
         mlflow.log_params(params)
         mlflow.log_dict(config_dict, "run_config.json")
+        if split_distribution is not None:
+            mlflow.log_dict(split_distribution, "split_distribution.json")

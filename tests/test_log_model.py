@@ -28,6 +28,7 @@ def test_log_model_no_active_run() -> None:
     )
 
     fig, _ = plt.subplots()
+    assert plt.fignum_exists(fig.number)
     logger_model.log_test(
         roc=0.9,
         metrics={
@@ -38,6 +39,7 @@ def test_log_model_no_active_run() -> None:
         },
         fig_cm=fig,
     )
+    assert not plt.fignum_exists(fig.number)
 
     dummy_input = np.random.randn(1, 3, 32, 32).astype(np.float32)
     dummy_output = np.random.randn(1, 2).astype(np.float32)
@@ -64,7 +66,7 @@ def test_log_epoch_with_active_run(
     mlflow.set_tracking_uri(f"sqlite:///{db_path}")
     logger_model = LogModel()
 
-    with mlflow.start_run():
+    with mlflow.start_run() as run:
         logger_model.log_epoch(
             train_loss=0.5,
             valid_loss=0.4,
@@ -75,6 +77,7 @@ def test_log_epoch_with_active_run(
                 "f1_score": 0.8,
             },
             step=1,
+            lr=0.0005,
         )
 
         fig, _ = plt.subplots()
@@ -88,7 +91,29 @@ def test_log_epoch_with_active_run(
                 "f1_score": 0.8,
             },
             fig_cm=fig,
+            per_class_metrics={
+                "cardboard": {
+                    "precision": 0.85,
+                    "recall": 0.75,
+                    "f1_score": 0.80,
+                    "support": 10,
+                },
+                "glass": {
+                    "precision": 0.75,
+                    "recall": 0.85,
+                    "f1_score": 0.80,
+                    "support": 12,
+                },
+            },
         )
+
+    client = mlflow.tracking.MlflowClient()
+    run_data = client.get_run(run.info.run_id).data
+    assert run_data.metrics["learning_rate"] == pytest.approx(0.0005)
+    assert run_data.metrics["test_f1_cardboard"] == pytest.approx(0.80)
+    assert run_data.metrics["test_recall_cardboard"] == pytest.approx(0.75)
+    assert run_data.metrics["test_f1_glass"] == pytest.approx(0.80)
+    assert run_data.metrics["test_recall_glass"] == pytest.approx(0.85)
 
 
 def test_log_model_registered_model_name_from_config(
@@ -182,6 +207,11 @@ def test_log_pipeline_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             tags={"hardware": "cpu", "framework": "pytorch"},
             params={"learning_rate": 0.001, "epochs": 5},
             config_dict={"sample_config": 123},
+            split_distribution={
+                "total_samples": 20,
+                "zero_overlap_verified": True,
+                "partitions": {},
+            },
         )
 
 

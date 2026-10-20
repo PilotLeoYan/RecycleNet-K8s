@@ -72,7 +72,8 @@ class TestDistributed:
 
         Returns:
             dict[str, Any]: Dictionary containing test_loss, test_accuracy,
-                test_precision, test_recall, test_f1_score, and confusion_matrix figure.
+                test_precision, test_recall, test_f1_score, per_class_metrics,
+                and confusion_matrix figure.
         """
         total = int(total_samples.item())
         avg_loss = float((loss_sum / total).item()) if total > 0 else 0.0
@@ -84,15 +85,31 @@ class TestDistributed:
         col_sums = cm.sum(axis=0)
         row_sums = cm.sum(axis=1)
 
-        precision = float((tp / np.maximum(col_sums, 1)).mean())
-        recall = float((tp / np.maximum(row_sums, 1)).mean())
-        f1_score = float(2.0 * (precision * recall) / (precision + recall + 1e-8))
+        per_class_precision = tp / np.maximum(col_sums, 1)
+        per_class_recall = tp / np.maximum(row_sums, 1)
+        support_denom = col_sums + row_sums
+        per_class_f1 = np.where(
+            support_denom > 0, 2.0 * tp / np.maximum(support_denom, 1), 0.0
+        )
+
+        precision = float(per_class_precision.mean()) if len(tp) > 0 else 0.0
+        recall = float(per_class_recall.mean()) if len(tp) > 0 else 0.0
+        f1_score = float(per_class_f1.mean()) if len(per_class_f1) > 0 else 0.0
 
         display_labels = (
             self.classes_name
             if len(self.classes_name) == self.num_classes
             else [str(i) for i in range(self.num_classes)]
         )
+        per_class_metrics: dict[str, dict[str, float | int]] = {
+            label: {
+                "precision": float(per_class_precision[i]),
+                "recall": float(per_class_recall[i]),
+                "f1_score": float(per_class_f1[i]),
+                "support": int(row_sums[i]),
+            }
+            for i, label in enumerate(display_labels)
+        }
         cm_disp = ConfusionMatrixDisplay(
             confusion_matrix=cm,
             display_labels=display_labels,
@@ -105,6 +122,7 @@ class TestDistributed:
             "test_precision": precision,
             "test_recall": recall,
             "test_f1_score": f1_score,
+            "per_class_metrics": per_class_metrics,
             "confusion_matrix": fig_cm,
         }
 
