@@ -61,8 +61,11 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument(
         "--output",
         type=Path,
-        default=Path("models/recyclenet.onnx"),
-        help="Destination path for the exported ONNX model",
+        default=None,
+        help=(
+            "Destination path for the exported ONNX model "
+            "(defaults to config.export.output_path)"
+        ),
     )
     export_parser.add_argument(
         "--num-classes",
@@ -94,9 +97,11 @@ def build_parser() -> argparse.ArgumentParser:
     super_train_parser.add_argument(
         "--output",
         type=Path,
-        default=Path("models/recyclenet.onnx"),
-        help="Destination path for the exported ONNX model"
-        "(default: models/recyclenet.onnx)",
+        default=None,
+        help=(
+            "Destination path for the exported ONNX model "
+            "(defaults to config.export.output_path)"
+        ),
     )
     super_train_parser.add_argument(
         "--num-classes",
