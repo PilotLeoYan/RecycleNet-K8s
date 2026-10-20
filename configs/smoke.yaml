@@ -27,6 +27,9 @@ training:
   patience: 3
   learning_rate: 0.001
   weight_decay: 0.0001
+  scheduler: "cosine"
+  min_lr: 0.00001
+  warmup_epochs: 0
   num_workers: 1
   cpu_resources_per_worker: 2
   gpu_resources_per_worker: 1.0
