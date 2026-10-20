@@ -200,6 +200,26 @@ class TrackingConfig(BaseModel):
   tracking_uri: {self.tracking_uri}"""
 
 
+class ExportConfig(BaseModel):
+    """Configuration settings for ONNX model export and validation.
+
+    Attributes:
+        output_path: Target filepath for the exported ONNX model artifact.
+        opset_version: Target ONNX operator set version (default: 18).
+        tolerance: Maximum allowed absolute numerical difference against PyTorch.
+    """
+
+    output_path: Path = Field(default=Path("models/recyclenet.onnx"))
+    opset_version: int = Field(default=18, ge=7)
+    tolerance: float = Field(default=1e-5, gt=0.0)
+
+    def __str__(self) -> str:
+        return f"""ExportConfig:
+  output_path: {self.output_path}
+  opset_version: {self.opset_version}
+  tolerance: {self.tolerance}"""
+
+
 class HPOConfig(BaseModel):
     """Configuration for hyperparameter optimization (HPO).
 
@@ -298,6 +318,7 @@ class AppConfig(BaseSettings):
         training: Model training configuration.
         tracking: MLflow tracking configuration.
         hpo: Hyperparameter optimization configuration.
+        export: Model serialization and ONNX export configuration.
     """
 
     ingestion: IngestionConfig
@@ -308,6 +329,7 @@ class AppConfig(BaseSettings):
     training: TrainingConfig
     tracking: TrackingConfig = Field(default_factory=TrackingConfig)
     hpo: HPOConfig = Field(default_factory=HPOConfig)
+    export: ExportConfig = Field(default_factory=ExportConfig)
 
     model_config = SettingsConfigDict(
         env_prefix="RECYCLENET_",
@@ -351,4 +373,5 @@ class AppConfig(BaseSettings):
 {self.reproducibility.__str__()}
 {self.training.__str__()}
 {self.tracking.__str__()}
-{self.hpo.__str__()}"""
+{self.hpo.__str__()}
+{self.export.__str__()}"""
