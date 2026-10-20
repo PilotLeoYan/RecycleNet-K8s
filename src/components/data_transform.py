@@ -1,6 +1,7 @@
 import random
 from collections.abc import Sized
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -107,6 +108,7 @@ class DataTransformation:
         self.seed = seed if seed is not None else getattr(config, "seed", None)
         self.classes: list[str] = []
         self.class_to_idx: dict[str, int] = {}
+        self.split_distribution: dict[str, Any] = {}
 
     def _get_generator(self, seed: int | None = None) -> torch.Generator:
         """Create a seeded PyTorch Generator for reproducible operations.
@@ -233,6 +235,46 @@ class DataTransformation:
             generator=split_generator,
         )
 
+        train_idx_set = set(train_sub.indices)
+        valid_idx_set = set(valid_sub.indices)
+        test_idx_set = set(test_sub.indices)
+        zero_overlap = (
+            train_idx_set.isdisjoint(valid_idx_set)
+            and train_idx_set.isdisjoint(test_idx_set)
+            and valid_idx_set.isdisjoint(test_idx_set)
+        )
+        if not zero_overlap:
+            raise ValueError(
+                "Data leakage detected: overlapping indices across splits."
+            )
+
+        targets_arr = np.asarray(full_dataset.targets)
+        split_map = {
+            "train": train_sub.indices,
+            "validation": valid_sub.indices,
+            "test": test_sub.indices,
+        }
+        partitions_summary: dict[str, Any] = {}
+        for split_name, indices in split_map.items():
+            split_targets = targets_arr[indices]
+            total_split = len(indices)
+            class_counts: dict[str, dict[str, int | float]] = {}
+            for cls_idx, cls_name in enumerate(self.classes):
+                count = int(np.sum(split_targets == cls_idx))
+                pct = (
+                    round((count / total_split * 100.0), 2) if total_split > 0 else 0.0
+                )
+                class_counts[cls_name] = {"count": count, "percentage": pct}
+            partitions_summary[split_name] = {
+                "total_samples": total_split,
+                "classes": class_counts,
+            }
+        self.split_distribution = {
+            "total_samples": len(full_dataset),
+            "zero_overlap_verified": zero_overlap,
+            "partitions": partitions_summary,
+        }
+
         train_ds = RecycleDataset(train_sub, train_transform)
         valid_ds = RecycleDataset(valid_sub, valid_transform)
         test_ds = RecycleDataset(test_sub, valid_transform)
@@ -242,6 +284,19 @@ class DataTransformation:
         test_loader = self._build_dataloader(test_ds, False)
 
         return train_loader, valid_loader, test_loader
+
+    def get_split_distribution(self, raw_data_dir: Path) -> dict[str, Any]:
+        """Return dataset split distribution, computing splits first if needed.
+
+        Args:
+            raw_data_dir: Path to directory containing class subfolders of images.
+
+        Returns:
+            dict[str, Any]: Split distribution summary and zero-overlap flag.
+        """
+        if not self.split_distribution:
+            self.get_dataloaders(raw_data_dir)
+        return self.split_distribution
 
     def discover_classes(
         self,

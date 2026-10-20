@@ -99,4 +99,49 @@ def test_test_distributed_local_metrics_edge_cases() -> None:
     metrics = evaluator._local_metrics(total_samples, loss_sum, conf_matrix)
     assert metrics["test_loss"] == 0.0
     assert metrics["test_accuracy"] == 0.0
+    assert metrics["test_f1_score"] == 0.0
+    assert "per_class_metrics" in metrics
+    assert metrics["per_class_metrics"]["a"]["support"] == 0
     assert isinstance(metrics["confusion_matrix"], Figure)
+
+
+def test_test_distributed_macro_f1_and_per_class_metrics() -> None:
+    """Test true Macro-F1 calculation vs harmonic mean and per-class metrics."""
+    empty_ds = TensorDataset(
+        torch.empty(0, 4),
+        torch.empty(0, dtype=torch.int64),
+    )
+    evaluator = TestDistributed(
+        model=nn.Linear(4, 2),
+        test_loader=DataLoader(empty_ds),
+        criterion=nn.CrossEntropyLoss(),
+        num_classes=2,
+        classes_name=["cardboard", "glass"],
+        device="cpu",
+    )
+
+    # Asymmetric confusion matrix where mean(per_class_f1) != harmonic_mean(P, R)
+    # Class 0: TP=1, FP=9, FN=0 -> P0=0.1, R0=1.0, F1_0 = 2*1/(10+1) = 2/11
+    # Class 1: TP=1, FP=0, FN=9 -> P1=1.0, R1=0.1, F1_1 = 2*1/(1+10) = 2/11
+    # True Macro-F1 = 2/11 ≈ 0.181818...
+    # Harmonic mean of Macro-P (0.55) and Macro-R (0.55) would be 0.55!
+    conf_matrix = torch.tensor([[1, 0], [9, 1]], dtype=torch.int64)
+    total_samples = torch.tensor([11], dtype=torch.int64)
+    loss_sum = torch.tensor([2.2], dtype=torch.float64)
+
+    metrics = evaluator._local_metrics(total_samples, loss_sum, conf_matrix)
+
+    expected_f1 = 2.0 / 11.0
+    assert np.isclose(metrics["test_f1_score"], expected_f1)
+    assert not np.isclose(metrics["test_f1_score"], 0.55)
+
+    per_class = metrics["per_class_metrics"]
+    assert set(per_class.keys()) == {"cardboard", "glass"}
+    assert np.isclose(per_class["cardboard"]["precision"], 0.1)
+    assert np.isclose(per_class["cardboard"]["recall"], 1.0)
+    assert np.isclose(per_class["cardboard"]["f1_score"], expected_f1)
+    assert per_class["cardboard"]["support"] == 1
+    assert np.isclose(per_class["glass"]["precision"], 1.0)
+    assert np.isclose(per_class["glass"]["recall"], 0.1)
+    assert np.isclose(per_class["glass"]["f1_score"], expected_f1)
+    assert per_class["glass"]["support"] == 10
