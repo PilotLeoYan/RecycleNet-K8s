@@ -149,6 +149,11 @@ def test_train_pipeline_run_success(
 
     # Verify MLflow interactions
     assert mock_logmodel.log_pipeline_metadata.called
+    _, meta_kwargs = mock_logmodel.log_pipeline_metadata.call_args
+    assert "scheduler" in meta_kwargs["params"]
+    assert "min_lr" in meta_kwargs["params"]
+    assert "warmup_epochs" in meta_kwargs["params"]
+    assert "split_distribution" in meta_kwargs
     assert mock_logmodel.log_epoch.call_count == 2
     assert mock_logmodel.log_test.called
     assert mock_logmodel.register_checkpoint.called
@@ -234,6 +239,11 @@ def test_train_loop_per_worker_execution(tmp_path: Path) -> None:
         train_loop_per_worker(config)
 
         assert mock_report.call_count == 2
+        final_report = mock_report.call_args_list[-1].args[0]
+        assert "history" in final_report
+        assert len(final_report["history"]) == 1
+        assert "learning_rate" in final_report["history"][0]
+        assert final_report["history"][0]["learning_rate"] == 0.001
 
 
 def test_train_pipeline_run_fallback_metrics(
@@ -453,3 +463,308 @@ def test_train_pipeline_run_test_loss_logged_from_results_metrics(
     _, kwargs = mock_logmodel.log_test.call_args
     assert kwargs.get("roc") == 0.91
     assert kwargs.get("metrics")["test_loss"] == 0.35
+
+
+def test_train_pipeline_logs_full_epoch_history_when_num_to_keep_is_one(
+    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test full epoch history is logged when metrics_dataframe has 1 row."""
+    pipeline = TrainPipeline(mock_app_config)
+
+    dataset_dir = tmp_path / "extracted_data"
+    cardboard_dir = dataset_dir / "cardboard"
+    cardboard_dir.mkdir(parents=True)
+    dummy_img = Image.new("RGB", (16, 16), color="red")
+    dummy_img.save(cardboard_dir / "img1.png")
+    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
+
+    ckpt_dir = tmp_path / "ckpt"
+    ckpt_dir.mkdir(parents=True)
+    dummy_model = build_mobilenet_v3(1)
+    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
+
+    class MockCheckpoint:
+        @contextmanager
+        def as_directory(self) -> Generator[str]:
+            yield str(ckpt_dir)
+
+    # Simulate Ray Train CheckpointConfig(num_to_keep=1) retaining only 1 row
+    metrics_df = pd.DataFrame(
+        [
+            {
+                "train_loss": 0.25,
+                "valid_loss": 0.20,
+                "valid_accuracy": 0.92,
+                "valid_precision": 0.91,
+                "valid_recall": 0.90,
+                "valid_f1_score": 0.905,
+            }
+        ]
+    )
+
+    mock_result = MagicMock()
+    mock_result.checkpoint = MockCheckpoint()
+    mock_result.metrics_dataframe = metrics_df
+    mock_result.metrics = {
+        "test_loss": 0.18,
+        "test_accuracy": 0.94,
+        "auc": 0.97,
+        "history": [
+            {
+                "train_loss": 0.50,
+                "valid_loss": 0.45,
+                "valid_accuracy": 0.78,
+                "valid_precision": 0.77,
+                "valid_recall": 0.76,
+                "valid_f1_score": 0.765,
+            },
+            {
+                "train_loss": 0.35,
+                "valid_loss": 0.30,
+                "valid_accuracy": 0.85,
+                "valid_precision": 0.84,
+                "valid_recall": 0.83,
+                "valid_f1_score": 0.835,
+            },
+            {
+                "train_loss": 0.25,
+                "valid_loss": 0.20,
+                "valid_accuracy": 0.92,
+                "valid_precision": 0.91,
+                "valid_recall": 0.90,
+                "valid_f1_score": 0.905,
+            },
+        ],
+    }
+
+    mock_logmodel = MagicMock()
+    mock_run = MagicMock()
+    mock_run.info.run_id = "test-full-history-run"
+
+    @contextmanager
+    def run_context() -> Generator[MagicMock]:
+        yield mock_run
+
+    mock_logmodel.start_run.return_value = run_context()
+    pipeline.logmodel = mock_logmodel
+
+    with patch(
+        "src.pipeline.train_pipeline.TorchTrainer.fit",
+        return_value=mock_result,
+    ):
+        pipeline.run()
+
+    assert mock_logmodel.log_epoch.call_count == 3
+    logged_steps = [
+        call.kwargs["step"] for call in mock_logmodel.log_epoch.call_args_list
+    ]
+    assert logged_steps == [0, 1, 2]
+    assert mock_logmodel.log_test.called
+
+
+def test_train_loop_per_worker_early_stopping(tmp_path: Path) -> None:
+    """Test train_loop_per_worker stops early when valid_loss does not improve."""
+    config: dict[str, Any] = {
+        "reproducibility": MagicMock(
+            torch_seed=42, random_seed=42, numpy_seed=42, deterministic=False
+        ),
+        "transformation": MagicMock(
+            image_size=(16, 16), batch_size=2, num_workers=0, pin_memory=False
+        ),
+        "raw_path": tmp_path,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "epochs": 10,
+        "patience": 2,
+    }
+
+    dummy_loader = MagicMock()
+    dummy_loader.dataset = [1, 2]
+
+    with (
+        patch("ray.train.torch.get_device", return_value="cpu"),
+        patch("src.pipeline.train_pipeline.DataTransformation") as mock_dt,
+        patch("ray.train.torch.prepare_data_loader", side_effect=lambda x: x),
+        patch("ray.train.torch.prepare_model", side_effect=lambda x: x),
+        patch("src.pipeline.train_pipeline.TrainStep") as mock_ts,
+        patch("src.pipeline.train_pipeline.TestDistributed") as mock_td,
+        patch("ray.train.report") as mock_report,
+    ):
+        dt_instance = MagicMock()
+        dt_instance.classes = ["c1", "c2"]
+        dt_instance.get_dataloaders.return_value = (
+            dummy_loader,
+            dummy_loader,
+            dummy_loader,
+        )
+        mock_dt.return_value = dt_instance
+
+        ts_instance = MagicMock()
+        # Epoch 0: valid_loss=0.5 (best)
+        # Epoch 1: valid_loss=0.6 (patience_counter=1)
+        # Epoch 2: valid_loss=0.7 (patience_counter=2 >= patience -> stops!)
+        ts_instance.train_valid_step.side_effect = [
+            {
+                "train_loss": 0.5,
+                "valid_loss": 0.5,
+                "valid_accuracy": 0.8,
+                "valid_f1_score": 0.8,
+            },
+            {
+                "train_loss": 0.45,
+                "valid_loss": 0.6,
+                "valid_accuracy": 0.78,
+                "valid_f1_score": 0.78,
+            },
+            {
+                "train_loss": 0.4,
+                "valid_loss": 0.7,
+                "valid_accuracy": 0.75,
+                "valid_f1_score": 0.75,
+            },
+        ]
+        mock_ts.return_value = ts_instance
+
+        td_instance = MagicMock()
+        td_instance.compute_distributed_test_metrics.return_value = {
+            "test_loss": 0.48,
+            "test_accuracy": 0.82,
+            "auc": 0.90,
+        }
+        mock_td.return_value = td_instance
+
+        train_loop_per_worker(config)
+
+        # 3 epochs executed (not 10), plus 1 final evaluation report = 4 reports
+        assert ts_instance.train_valid_step.call_count == 3
+        assert mock_report.call_count == 4
+        final_report_arg = mock_report.call_args_list[-1].args[0]
+        assert len(final_report_arg["history"]) == 3
+        assert all("learning_rate" in r for r in final_report_arg["history"])
+
+
+def test_train_loop_per_worker_plateau_scheduler(tmp_path: Path) -> None:
+    """Test train_loop_per_worker with ReduceLROnPlateau scheduler."""
+    config: dict[str, Any] = {
+        "reproducibility": MagicMock(
+            torch_seed=42, random_seed=42, numpy_seed=42, deterministic=False
+        ),
+        "transformation": MagicMock(
+            image_size=(16, 16), batch_size=2, num_workers=0, pin_memory=False
+        ),
+        "raw_path": tmp_path,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "epochs": 1,
+        "scheduler": "plateau",
+        "min_lr": 1e-5,
+        "patience": 2,
+    }
+
+    dummy_loader = MagicMock()
+    dummy_loader.dataset = [1, 2]
+
+    with (
+        patch("ray.train.torch.get_device", return_value="cpu"),
+        patch("src.pipeline.train_pipeline.DataTransformation") as mock_dt,
+        patch("ray.train.torch.prepare_data_loader", side_effect=lambda x: x),
+        patch("ray.train.torch.prepare_model", side_effect=lambda x: x),
+        patch("src.pipeline.train_pipeline.TrainStep") as mock_ts,
+        patch("src.pipeline.train_pipeline.TestDistributed") as mock_td,
+        patch("ray.train.report") as mock_report,
+    ):
+        dt_instance = MagicMock()
+        dt_instance.classes = ["c1", "c2"]
+        dt_instance.get_dataloaders.return_value = (
+            dummy_loader,
+            dummy_loader,
+            dummy_loader,
+        )
+        mock_dt.return_value = dt_instance
+
+        ts_instance = MagicMock()
+        ts_instance.train_valid_step.return_value = {
+            "train_loss": 0.5,
+            "valid_loss": 0.4,
+            "valid_accuracy": 0.8,
+            "valid_f1_score": 0.8,
+        }
+        mock_ts.return_value = ts_instance
+
+        td_instance = MagicMock()
+        td_instance.compute_distributed_test_metrics.return_value = {
+            "test_loss": 0.3,
+            "test_accuracy": 0.9,
+            "auc": 0.95,
+        }
+        mock_td.return_value = td_instance
+
+        train_loop_per_worker(config)
+
+        assert mock_report.call_count == 2
+        final_report = mock_report.call_args_list[-1].args[0]
+        assert "history" in final_report
+        assert final_report["history"][0]["learning_rate"] == 0.001
+
+
+def test_train_pipeline_logs_per_class_metrics(
+    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test TrainPipeline passes per_class_metrics to logmodel.log_test."""
+    pipeline = TrainPipeline(mock_app_config)
+
+    dataset_dir = tmp_path / "extracted_data"
+    cardboard_dir = dataset_dir / "cardboard"
+    cardboard_dir.mkdir(parents=True)
+    dummy_img = Image.new("RGB", (16, 16), color="red")
+    dummy_img.save(cardboard_dir / "img1.png")
+    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
+
+    ckpt_dir = tmp_path / "ckpt"
+    ckpt_dir.mkdir(parents=True)
+    dummy_model = build_mobilenet_v3(1)
+    torch.save({"model_state": dummy_model.state_dict()}, ckpt_dir / "model.pt")
+
+    class MockCheckpoint:
+        @contextmanager
+        def as_directory(self) -> Generator[str]:
+            yield str(ckpt_dir)
+
+    per_class = {
+        "cardboard": {
+            "precision": 0.9,
+            "recall": 0.85,
+            "f1_score": 0.87,
+            "support": 10,
+        }
+    }
+    mock_result = MagicMock()
+    mock_result.checkpoint = MockCheckpoint()
+    mock_result.metrics_dataframe = None
+    mock_result.metrics = {
+        "test_loss": 0.20,
+        "test_accuracy": 0.93,
+        "auc": 0.96,
+        "per_class_metrics": per_class,
+    }
+
+    mock_logmodel = MagicMock()
+    mock_run = MagicMock()
+    mock_run.info.run_id = "test-per-class-run"
+
+    @contextmanager
+    def run_context() -> Generator[MagicMock]:
+        yield mock_run
+
+    mock_logmodel.start_run.return_value = run_context()
+    pipeline.logmodel = mock_logmodel
+
+    with patch(
+        "src.pipeline.train_pipeline.TorchTrainer.fit",
+        return_value=mock_result,
+    ):
+        pipeline.run()
+
+    mock_logmodel.log_test.assert_called_once()
+    _, kwargs = mock_logmodel.log_test.call_args
+    assert kwargs.get("per_class_metrics") == per_class

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
+import yaml
 from ray import tune
 from ray.air.integrations.mlflow import MLflowLoggerCallback
 from ray.tune import FailureConfig
@@ -251,6 +252,112 @@ class HPOPipeline:
             logger.info("Ray Tune HPO search completed successfully.")
             logger.info("Best trial config: %s", best_result.config)
             logger.info("Best trial metrics: %s", best_result.metrics)
+
+            best_config = best_result.config
+            best_metrics: dict[str, Any] = best_result.metrics or {}
+
+            output_config: dict[str, Any] = {
+                "ingestion": {
+                    "zip_source": str(self.config.ingestion.zip_source),
+                    "raw_output_dir": str(self.config.ingestion.raw_output_dir),
+                },
+                "transformation": {
+                    "image_size": list(self.config.transformation.image_size),
+                    "image_mean": list(self.config.transformation.image_mean),
+                    "image_std": list(self.config.transformation.image_std),
+                    "random_h_flip": self.config.transformation.random_h_flip,
+                    "random_rotation": (
+                        list(self.config.transformation.random_rotation)
+                        if isinstance(self.config.transformation.random_rotation, tuple)
+                        else self.config.transformation.random_rotation
+                    ),
+                    "train_split": self.config.transformation.train_split,
+                    "eval_split": self.config.transformation.eval_split,
+                    "test_split": self.config.transformation.test_split,
+                    "batch_size": int(
+                        best_config.get(
+                            "batch_size", self.config.transformation.batch_size
+                        )
+                    ),
+                    "num_workers": int(
+                        best_config.get(
+                            "dataloader_n_workers",
+                            self.config.transformation.num_workers,
+                        )
+                    ),
+                    "pin_memory": self.config.transformation.pin_memory,
+                },
+                "reproducibility": {
+                    "random_seed": self.config.reproducibility.random_seed,
+                    "numpy_seed": self.config.reproducibility.numpy_seed,
+                    "torch_seed": self.config.reproducibility.torch_seed,
+                    "deterministic": self.config.reproducibility.deterministic,
+                    "warn_only": self.config.reproducibility.warn_only,
+                },
+                "training": {
+                    "epochs": self.config.training.epochs,
+                    "patience": self.config.training.patience,
+                    "learning_rate": float(
+                        best_config.get(
+                            "learning_rate", self.config.training.learning_rate
+                        )
+                    ),
+                    "weight_decay": float(
+                        best_config.get(
+                            "weight_decay", self.config.training.weight_decay
+                        )
+                    ),
+                    "scheduler": self.config.training.scheduler,
+                    "min_lr": self.config.training.min_lr,
+                    "warmup_epochs": self.config.training.warmup_epochs,
+                    "num_workers": self.config.training.num_workers,
+                    "cpu_resources_per_worker": (
+                        self.config.training.cpu_resources_per_worker
+                    ),
+                    "gpu_resources_per_worker": (
+                        self.config.training.gpu_resources_per_worker
+                    ),
+                    "device": self.config.training.device,
+                },
+                "tracking": {
+                    "experiment_name": self.config.tracking.experiment_name,
+                    "registered_model_name": self.config.tracking.registered_model_name,
+                    "tracking_uri": self.config.tracking.tracking_uri,
+                    "tags": dict(self.config.tracking.tags),
+                },
+                "hpo": {
+                    "weight_decay_range": list(self.config.hpo.weight_decay_range),
+                    "learning_rate_range": list(self.config.hpo.learning_rate_range),
+                    "batch_size": self.config.hpo.batch_size,
+                    "num_samples": self.config.hpo.num_samples,
+                    "max_epochs": self.config.hpo.max_epochs,
+                    "grace_period": self.config.hpo.grace_period,
+                    "reduction_factor": self.config.hpo.reduction_factor,
+                    "dataloader_n_workers": self.config.hpo.dataloader_n_workers,
+                    "max_concurrent_trials": self.config.hpo.max_concurrent_trials,
+                    "cpu_resources_per_trial": self.config.hpo.cpu_resources_per_trial,
+                    "gpu_resources_per_trial": self.config.hpo.gpu_resources_per_trial,
+                    "device": self.config.hpo.device,
+                    "experiment_name": self.config.hpo.experiment_name,
+                    "best_config_path": str(self.config.hpo.best_config_path),
+                },
+            }
+
+            output_path = Path(self.config.hpo.best_config_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, "w", encoding="utf-8") as f:
+                yaml.dump(
+                    output_config, f, default_flow_style=False, allow_unicode=True
+                )
+
+            logger.info(
+                "Best HPO config saved to %s | lr=%.6f, wd=%.6f, batch=%d",
+                output_path,
+                output_config["training"]["learning_rate"],
+                output_config["training"]["weight_decay"],
+                output_config["transformation"]["batch_size"],
+            )
+            logger.info("Best HPO metrics: %s", best_metrics)
 
             return best_result.config, best_result.metrics
 
