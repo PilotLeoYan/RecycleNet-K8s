@@ -71,4 +71,47 @@ def build_parser() -> argparse.ArgumentParser:
         help="Number of output classification classes (default: 6)",
     )
 
+    super_train_parser = subparsers.add_parser(
+        "super-train",
+        help=(
+            "Run the full pipeline sequentially: HPO → Train (best HPO config) → "
+            "ONNX export"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Super-Train Pipeline\n"
+            "====================\n"
+            "Chains three stages in sequence without manual intervention:\n\n"
+            "  [1/3] HPO       – Ray Tune distributed hyperparameter search\n"
+            "  [2/3] Train     – Production training using the best HPO config\n"
+            "  [3/3] Export    – ONNX export + numerical parity validation\n\n"
+            "Equivalent to running:\n"
+            "  uv run python -m src hpo\n"
+            "  uv run python -m src train --use-best-hpo\n"
+            "  uv run python -m src export --output <output>"
+        ),
+    )
+    super_train_parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("models/recyclenet.onnx"),
+        help="Destination path for the exported ONNX model"
+        "(default: models/recyclenet.onnx)",
+    )
+    super_train_parser.add_argument(
+        "--num-classes",
+        type=int,
+        default=6,
+        help="Number of output classification classes (default: 6)",
+    )
+    super_train_parser.add_argument(
+        "--skip-hpo",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the HPO stage and use the existing best_hpo_config.yaml "
+            "on disk. Useful for re-runs after a completed HPO search."
+        ),
+    )
+
     return parser

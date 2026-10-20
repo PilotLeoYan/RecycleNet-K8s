@@ -6,6 +6,7 @@ from pathlib import Path
 from src.config.schema import AppConfig
 from src.pipeline.export_onnx import ONNXExportPipeline
 from src.pipeline.hpo_pipeline import HPOPipeline
+from src.pipeline.super_train_pipeline import SuperTrainPipeline
 from src.pipeline.train_pipeline import TrainPipeline
 from src.utils import RecycleNetException, build_parser, get_logger
 
@@ -52,6 +53,14 @@ def main() -> None:
                     num_classes=args.num_classes,
                     checkpoint_path=args.checkpoint,
                 )
+
+            case "super-train":
+                super_train_pipeline = SuperTrainPipeline(
+                    config,
+                    output_path=args.output,
+                    skip_hpo=args.skip_hpo,
+                )
+                super_train_pipeline.run(num_classes=args.num_classes)
 
             case _:
                 parser.error(f"Unrecognized command '{args.command}'")
