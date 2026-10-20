@@ -35,7 +35,7 @@ class SuperTrainPipeline:
     def __init__(
         self,
         config: AppConfig,
-        output_path: Path = Path("models/recyclenet.onnx"),
+        output_path: Path | None = None,
         *,
         skip_hpo: bool = False,
     ) -> None:
@@ -44,12 +44,18 @@ class SuperTrainPipeline:
         Args:
             config: Root application configuration object.
             output_path: Destination path for the ONNX model.
-                Defaults to ``models/recyclenet.onnx``.
+                Defaults to ``config.export.output_path``.
             skip_hpo: If ``True``, skip the HPO stage and use an
                 existing ``best_hpo_config.yaml``.  Defaults to ``False``.
         """
         self.config = config
-        self.output_path = output_path
+        self.output_path = (
+            output_path
+            if output_path is not None
+            else getattr(config, "export", None)
+            and config.export.output_path
+            or Path("models/recyclenet.onnx")
+        )
         self.skip_hpo = skip_hpo
 
     def run(

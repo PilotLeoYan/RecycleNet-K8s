@@ -60,3 +60,8 @@ hpo:
   gpu_resources_per_trial: 0.5
   device: "auto" # auto, cuda, or cpu
   experiment_name: "hpo_mobilenetv3_experiment"
+
+export:
+  output_path: "models/recyclenet.onnx"
+  opset_version: 18
+  tolerance: 0.00001

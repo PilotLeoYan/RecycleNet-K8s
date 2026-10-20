@@ -1,4 +1,4 @@
-"""ONNX export pipeline for RecycleNet PyTorch model serialization and validation."""
+"""ONNX export pipeline for RecycleNet model serialization and validation."""
 
 import argparse
 from pathlib import Path
@@ -26,6 +26,7 @@ def export_to_onnx(
     model: torch.nn.Module,
     input_shape: tuple[int, ...],
     output_path: Path,
+    opset_version: int = ONNX_OPSET,
 ) -> Path:
     """Export a PyTorch model to ONNX format.
 
@@ -33,6 +34,7 @@ def export_to_onnx(
         model: Trained PyTorch model in eval mode.
         input_shape: Input tensor shape (batch, channels, height, width).
         output_path: Destination path for the exported ONNX file.
+        opset_version: Target ONNX operator set version (default: 18).
 
     Returns:
         Path: Resolved path to the exported ONNX file.
@@ -49,14 +51,16 @@ def export_to_onnx(
             model,
             (dummy_input,),
             str(output_path),
-            opset_version=ONNX_OPSET,
+            opset_version=opset_version,
             input_names=["image"],
             output_names=["logits"],
             dynamic_shapes=({0: torch.export.Dim("batch_size")},),
             dynamo=True,
             external_data=False,
         )
-        logger.info("Model exported to ONNX at %s (opset=%d)", output_path, ONNX_OPSET)
+        logger.info(
+            "Model exported to ONNX at %s (opset=%d)", output_path, opset_version
+        )
         return output_path.resolve()
     except Exception as e:
         raise RecycleNetException("Failed to export model to ONNX", e) from e
@@ -133,16 +137,23 @@ class ONNXExportPipeline:
     def __init__(
         self,
         config: AppConfig,
-        output_path: Path = DEFAULT_OUTPUT_PATH,
+        output_path: Path | None = None,
     ) -> None:
         """Initialize the ONNX export pipeline.
 
         Args:
             config: Root application configuration object.
-            output_path: Output path for ONNX file. Defaults to models/recyclenet.onnx.
+            output_path: Output path for ONNX file. If None, defaults to
+                config.export.output_path.
         """
         self.config = config
-        self.output_path = output_path
+        self.output_path = (
+            output_path
+            if output_path is not None
+            else getattr(config, "export", None)
+            and config.export.output_path
+            or DEFAULT_OUTPUT_PATH
+        )
 
     def _load_model_from_mlflow(self, num_classes: int) -> torch.nn.Module:
         """Load the best registered model from MLflow Model Registry.
@@ -230,10 +241,24 @@ class ONNXExportPipeline:
             model = self._load_model_from_mlflow(num_classes)
 
         input_shape = (1, 3, *self.config.transformation.image_size)
+        opset_version = (
+            self.config.export.opset_version
+            if hasattr(self.config, "export")
+            else ONNX_OPSET
+        )
+        tolerance = (
+            self.config.export.tolerance
+            if hasattr(self.config, "export")
+            else PARITY_TOLERANCE
+        )
 
-        onnx_path = export_to_onnx(model, input_shape, self.output_path)
+        onnx_path = export_to_onnx(
+            model, input_shape, self.output_path, opset_version=opset_version
+        )
         validate_onnx_graph(onnx_path)
-        max_diff = verify_numerical_parity(model, onnx_path, input_shape)
+        max_diff = verify_numerical_parity(
+            model, onnx_path, input_shape, tolerance=tolerance
+        )
 
         if mlflow.active_run():
             mlflow.log_artifact(str(onnx_path), artifact_path="onnx")
@@ -264,8 +289,8 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=DEFAULT_OUTPUT_PATH,
-        help="Output path for the ONNX file.",
+        default=None,
+        help="Output path for the ONNX file (defaults to config.export.output_path).",
     )
     parser.add_argument(
         "--num-classes",

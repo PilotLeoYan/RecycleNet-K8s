@@ -10,6 +10,7 @@ from torch import nn
 from src.components.model import build_mobilenet_v3
 from src.config.schema import (
     AppConfig,
+    ExportConfig,
     IngestionConfig,
     TrainingConfig,
     TransformationConfig,
@@ -178,3 +179,65 @@ def test_cli_parser_subcommands() -> None:
     assert export_args.checkpoint == Path("artifacts/best.pt")
     assert export_args.output == Path("models/custom.onnx")
     assert export_args.num_classes == 10
+
+
+def test_cli_parser_export_default_output() -> None:
+    """Verify build_parser() defaults export --output to None to defer to config."""
+    parser = build_parser()
+    args = parser.parse_args(["export"])
+    assert args.command == "export"
+    assert args.output is None
+
+
+def test_smoke_config_isolation() -> None:
+    """Verify configs/smoke.yaml isolates artifacts and does not pollute runs."""
+    config = AppConfig.from_yaml("configs/smoke.yaml")
+
+    # Export isolation: smoke export should never touch production ONNX model
+    assert config.export.output_path == Path("models/smoke_recyclenet.onnx")
+    assert config.export.output_path != Path("models/recyclenet.onnx")
+
+    # Tracking isolation: smoke training should never touch production RecycleNet
+    assert config.tracking.registered_model_name == "RecycleNet_Dev"
+    assert config.tracking.registered_model_name != "RecycleNet"
+    assert config.tracking.experiment_name == "RecycleNet_Smoke_Test"
+    assert config.tracking.experiment_name != "RecycleNet_Training"
+
+    # HPO isolation: smoke HPO should never touch production best_hpo_config.yaml
+    assert config.hpo.best_config_path == Path("configs/best_hpo_smoke_config.yaml")
+    assert config.hpo.best_config_path != Path("configs/best_hpo_config.yaml")
+
+
+def test_onnx_export_pipeline_smoke_resolves_config_output(tmp_path: Path) -> None:
+    """Verify ONNXExportPipeline uses config.export.output_path when output is None."""
+    smoke_output = tmp_path / "models" / "smoke_recyclenet.onnx"
+    config = AppConfig(
+        ingestion=IngestionConfig(
+            zip_source=tmp_path / "dummy.zip",
+            raw_output_dir=tmp_path / "raw",
+        ),
+        transformation=TransformationConfig(
+            image_size=(32, 32),
+            batch_size=2,
+            num_workers=0,
+        ),
+        training=TrainingConfig(epochs=1, patience=1, device="cpu"),
+        export=ExportConfig(output_path=smoke_output),
+    )
+
+    dummy_model = DummyClassifier(num_classes=6)
+    pipeline = ONNXExportPipeline(config, output_path=None)
+    assert pipeline.output_path == smoke_output
+
+    with (
+        patch("src.pipeline.export_onnx.mlflow.set_tracking_uri"),
+        patch(
+            "src.pipeline.export_onnx.mlflow.pytorch.load_model",
+            return_value=dummy_model,
+        ),
+        patch("src.pipeline.export_onnx.mlflow.active_run", return_value=None),
+    ):
+        result_path = pipeline.run(num_classes=6, checkpoint_path=None)
+
+    assert result_path == smoke_output.resolve()
+    assert result_path.exists()
