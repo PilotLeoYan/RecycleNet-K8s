@@ -13,7 +13,7 @@ from .metrics import (
     get_metrics,
 )
 from .model import build_mobilenet_v3
-from .optimizers import get_optimizer
+from .optimizers import get_optimizer, get_scheduler
 from .train_step import TrainStep
 
 __all__ = [
@@ -23,6 +23,7 @@ __all__ = [
     "build_mobilenet_v3",
     "get_criterion",
     "get_optimizer",
+    "get_scheduler",
     "LogModel",
     "get_metrics",
     "get_loss_metrics",
