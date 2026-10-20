@@ -87,8 +87,9 @@ def test_train_pipeline_run_success(
     glass_dir.mkdir(parents=True)
 
     dummy_img = Image.new("RGB", (16, 16), color="red")
-    dummy_img.save(cardboard_dir / "img1.png")
-    dummy_img.save(glass_dir / "img1.png")
+    for idx in range(10):
+        dummy_img.save(cardboard_dir / f"img{idx}.png")
+        dummy_img.save(glass_dir / f"img{idx}.png")
 
     monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
 
@@ -175,7 +176,8 @@ def test_train_pipeline_run_no_checkpoint_raises(
     cardboard_dir = dataset_dir / "cardboard"
     cardboard_dir.mkdir(parents=True)
     dummy_img = Image.new("RGB", (16, 16), color="red")
-    dummy_img.save(cardboard_dir / "img1.png")
+    for idx in range(10):
+        dummy_img.save(cardboard_dir / f"img{idx}.png")
     monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
 
     mock_result = MagicMock()
@@ -226,12 +228,19 @@ def test_train_loop_per_worker_execution(tmp_path: Path) -> None:
         mock_dt.return_value = dt_instance
 
         ts_instance = MagicMock()
-        ts_instance.train_valid_step.return_value = {
+        epoch_metrics = {
             "train_loss": 0.5,
             "valid_loss": 0.4,
             "valid_accuracy": 0.8,
             "valid_f1_score": 0.8,
         }
+
+        def _train_valid_step() -> dict[str, float]:
+            # Step the real optimizer so the LR scheduler order is valid.
+            mock_ts.call_args.kwargs["optimizer"].step()
+            return epoch_metrics
+
+        ts_instance.train_valid_step.side_effect = _train_valid_step
         mock_ts.return_value = ts_instance
 
         td_instance = MagicMock()
@@ -262,7 +271,8 @@ def test_train_pipeline_run_trainer_fit_exception_raises(
     cardboard_dir = dataset_dir / "cardboard"
     cardboard_dir.mkdir(parents=True)
     dummy_img = Image.new("RGB", (16, 16), color="red")
-    dummy_img.save(cardboard_dir / "img1.png")
+    for idx in range(10):
+        dummy_img.save(cardboard_dir / f"img{idx}.png")
     monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
 
     with patch(
@@ -314,7 +324,7 @@ def test_train_loop_per_worker_early_stopping(tmp_path: Path) -> None:
         # Epoch 0: valid_loss=0.5 (best)
         # Epoch 1: valid_loss=0.6 (patience_counter=1)
         # Epoch 2: valid_loss=0.7 (patience_counter=2 >= patience -> stops!)
-        ts_instance.train_valid_step.side_effect = [
+        early_stop_metrics = [
             {
                 "train_loss": 0.5,
                 "valid_loss": 0.5,
@@ -334,6 +344,14 @@ def test_train_loop_per_worker_early_stopping(tmp_path: Path) -> None:
                 "valid_f1_score": 0.75,
             },
         ]
+        metrics_iter = iter(early_stop_metrics)
+
+        def _train_valid_step() -> dict[str, float]:
+            # Step the real optimizer so the LR scheduler order is valid.
+            mock_ts.call_args.kwargs["optimizer"].step()
+            return next(metrics_iter)
+
+        ts_instance.train_valid_step.side_effect = _train_valid_step
         mock_ts.return_value = ts_instance
 
         td_instance = MagicMock()
