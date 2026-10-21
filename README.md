@@ -3,6 +3,8 @@
 Waste classification (TrashNet, 6 classes) with an end-to-end MLOps pipeline.
 
 > **Status:** 🟢 Phase 1 (Training) done · 🟡 Phase 2–4 (Inference, Kubernetes, CI/CD) in progress
+>
+> 🤗 **Model:** [LeoYan/recyclenet-mobilenetv3](https://huggingface.co/LeoYan/recyclenet-mobilenetv3)
 
 ## 🗺️ Roadmap
 
@@ -86,6 +88,8 @@ flowchart LR
 | 0.781 | 0.749 | 0.947 |
 
 *Source: [`models/model_card.json`](models/model_card.json).*
+
+🤗 **Trained model:** [LeoYan/recyclenet-mobilenetv3](https://huggingface.co/LeoYan/recyclenet-mobilenetv3)
 
 ## Quickstart
 
