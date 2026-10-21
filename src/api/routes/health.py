@@ -12,6 +12,20 @@ from fastapi.responses import JSONResponse
 router = APIRouter()
 
 
+@router.get("/health", tags=["health"], summary="General health check")
+async def health(request: Request) -> JSONResponse:
+    """General health check endpoint reporting service and model readiness."""
+    model_ready: bool = getattr(request.app.state, "model_ready", False)
+    status_code = 200 if model_ready else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "healthy" if model_ready else "degraded",
+            "model_ready": model_ready,
+        },
+    )
+
+
 @router.get("/healthz", tags=["health"], summary="Liveness probe")
 async def healthz() -> dict:
     """Kubernetes liveness probe.
