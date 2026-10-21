@@ -5,6 +5,7 @@ from .schema import (
     ExportConfig,
     HPOConfig,
     IngestionConfig,
+    ModelConfig,
     ReproducibilityConfig,
     TrackingConfig,
     TrainingConfig,
@@ -14,6 +15,7 @@ from .schema import (
 __all__ = [
     "IngestionConfig",
     "TransformationConfig",
+    "ModelConfig",
     "ReproducibilityConfig",
     "TrainingConfig",
     "TrackingConfig",

@@ -98,6 +98,37 @@ def test_hpo_pipeline_run_success(
     loaded = AppConfig.from_yaml(tmp_path / "best_hpo_config.yaml")
     assert loaded.training.learning_rate == 0.001
     assert loaded.transformation.batch_size == 8
+    assert loaded.model.size == mock_app_config.model.size
+
+
+def test_hpo_pipeline_exports_configured_model_size(
+    mock_app_config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test HPOPipeline persists non-default model size variant to exported YAML."""
+    mock_app_config.model.size = "large"
+    mock_app_config.hpo.best_config_path = tmp_path / "best_hpo_large.yaml"
+    pipeline = HPOPipeline(mock_app_config)
+
+    dataset_dir = tmp_path / "extracted_data_large"
+    (dataset_dir / "cardboard").mkdir(parents=True)
+    (dataset_dir / "glass").mkdir(parents=True)
+    monkeypatch.setattr(pipeline.ingestion, "extract_dataset", lambda: dataset_dir)
+
+    mock_result_grid = MagicMock()
+    mock_result_grid.errors = []
+    mock_best_result = MagicMock()
+    mock_best_result.config = {"learning_rate": 0.002, "batch_size": 16}
+    mock_best_result.metrics = {"valid_loss": 0.25, "valid_accuracy": 0.92}
+    mock_result_grid.get_best_result.return_value = mock_best_result
+
+    mock_tuner = MagicMock()
+    mock_tuner.fit.return_value = mock_result_grid
+
+    with patch("src.pipeline.hpo_pipeline.tune.Tuner", return_value=mock_tuner):
+        pipeline.run()
+
+    loaded = AppConfig.from_yaml(tmp_path / "best_hpo_large.yaml")
+    assert loaded.model.size == "large"
 
 
 def test_hpo_pipeline_run_with_errors_raises(
