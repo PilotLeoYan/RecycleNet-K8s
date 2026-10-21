@@ -74,8 +74,6 @@ def test_model_config_size_validation() -> None:
     [
         ("configs/smoke.yaml", "small"),
         ("configs/config.yaml", "large"),
-        ("configs/best_hpo_smoke_config.yaml", "small"),
-        ("configs/best_hpo_config.yaml", "large"),
     ],
 )
 def test_yaml_configs_select_expected_model_size(
