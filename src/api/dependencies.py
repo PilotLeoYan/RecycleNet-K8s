@@ -120,6 +120,13 @@ def _load_onnx_session(model_path: Path) -> tuple[OnnxModelWrapper, dict[int, st
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ANN001
     """Load the RecycleNet ONNX model at startup and release it on shutdown."""
+    if getattr(app.state, "model", None) is not None:
+        logger.info(
+            "RecycleNet model already initialized in app state; skipping ONNX load."
+        )
+        yield
+        return
+
     try:
         model_path = _resolve_model_path()
         model, idx_to_class = _load_onnx_session(model_path)
