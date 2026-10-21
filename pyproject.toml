@@ -18,6 +18,10 @@ dependencies = [
     "onnx>=1.23.2",
     "onnxruntime>=1.31.0",
     "onnxscript>=0.7.2",
+    "fastapi>=0.141.1",
+    "uvicorn>=0.52.4",
+    "python-multipart>=0.0.32",
+    "pillow>=12.3.0",
 ]
 
 [build-system]
@@ -75,7 +79,6 @@ dev = [
     "pytest (>=9.1.1,<10.0.0)",
     "types-pyyaml>=6.0.12.20260815",
     "ipykernel>=7.3.0",
-    "pillow>=12.3.0",
     "bandit>=1.9.4",
     "python-lsp-server[all]>=1.15.0",
 ]

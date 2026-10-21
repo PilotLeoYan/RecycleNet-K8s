@@ -26,3 +26,8 @@ mlflow.db
 pyrightconfig.json
 configs/best_hpo_config.yaml
 configs/best_hpo_smoke_config.yaml
+
+# models
+*.pt
+*.pth
+*.onnx
