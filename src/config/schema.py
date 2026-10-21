@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -173,6 +173,23 @@ class TrainingConfig(BaseModel):
   device: {self.device}"""
 
 
+class ModelConfig(BaseModel):
+    """Configuration for the model architecture.
+
+    Attributes:
+        size: MobileNetV3 variant to train ('small' or 'large').
+    """
+
+    size: Literal["small", "large"] = Field(
+        default="small",
+        description="MobileNetV3 variant: 'small' (fast) or 'large' (accurate).",
+    )
+
+    def __str__(self) -> str:
+        return f"""ModelConfig:
+  size: {self.size}"""
+
+
 class TrackingConfig(BaseModel):
     """Configuration for MLflow tracking.
 
@@ -329,6 +346,7 @@ class AppConfig(BaseSettings):
         default_factory=ReproducibilityConfig
     )
     training: TrainingConfig
+    model: ModelConfig = Field(default_factory=ModelConfig)
     tracking: TrackingConfig = Field(default_factory=TrackingConfig)
     hpo: HPOConfig = Field(default_factory=HPOConfig)
     export: ExportConfig = Field(default_factory=ExportConfig)
@@ -374,6 +392,7 @@ class AppConfig(BaseSettings):
 {self.transformation.__str__()}
 {self.reproducibility.__str__()}
 {self.training.__str__()}
+{self.model.__str__()}
 {self.tracking.__str__()}
 {self.hpo.__str__()}
 {self.export.__str__()}"""

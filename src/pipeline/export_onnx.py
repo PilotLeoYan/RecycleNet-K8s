@@ -200,7 +200,8 @@ class ONNXExportPipeline:
         """
         try:
             model: torch.nn.Module = cast(
-                torch.nn.Module, build_mobilenet_v3(num_classes)
+                torch.nn.Module,
+                build_mobilenet_v3(num_classes, size=self.config.model.size),
             )
             checkpoint: dict[str, Any] = torch.load(
                 checkpoint_path, map_location="cpu", weights_only=True

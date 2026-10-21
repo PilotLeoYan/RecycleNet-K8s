@@ -61,7 +61,9 @@ def train_eval_trial(
         )
         train_loader, valid_loader, _ = transformation.get_dataloaders(data_dir)
 
-        model = build_mobilenet_v3(len(transformation.classes))
+        model = build_mobilenet_v3(
+            len(transformation.classes), size=app_config.model.size
+        )
         model = model.to(config["device"])
         criterion = get_criterion()
         optimizer = get_optimizer(
@@ -318,6 +320,9 @@ class HPOPipeline:
                         self.config.training.gpu_resources_per_worker
                     ),
                     "device": self.config.training.device,
+                },
+                "model": {
+                    "size": self.config.model.size,
                 },
                 "tracking": {
                     "experiment_name": self.config.tracking.experiment_name,

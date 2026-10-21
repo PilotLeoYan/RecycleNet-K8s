@@ -101,7 +101,9 @@ def train_loop_per_worker(
         )
         train_loader = ray.train.torch.prepare_data_loader(train_loader)
 
-        model = build_mobilenet_v3(len(transformation.classes))
+        model = build_mobilenet_v3(
+            len(transformation.classes), size=config.get("model_size", "small")
+        )
         model = ray.train.torch.prepare_model(model)
 
         criterion = get_criterion()
@@ -368,6 +370,7 @@ class TrainPipeline:
                 "scheduler": self.config.training.scheduler,
                 "min_lr": self.config.training.min_lr,
                 "warmup_epochs": self.config.training.warmup_epochs,
+                "model_size": self.config.model.size,
                 "tracking_uri": resolve_tracking_uri(self.config.tracking.tracking_uri),
             }
 
@@ -430,7 +433,9 @@ class TrainPipeline:
                 # Ray Train v2 only keeps metrics of checkpointed reports.
 
                 logger.info("Restoring best model checkpoint for model registry...")
-                best_model = build_mobilenet_v3(num_classes)
+                best_model = build_mobilenet_v3(
+                    num_classes, size=self.config.model.size
+                )
                 with best_checkpoint.as_directory() as checkpoint_dir:
                     checkpoint_path = os.path.join(checkpoint_dir, "model.pt")
                     checkpoint_data = torch.load(

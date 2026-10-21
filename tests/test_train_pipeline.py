@@ -386,6 +386,7 @@ def test_train_loop_per_worker_plateau_scheduler(tmp_path: Path) -> None:
         "weight_decay": 0.0001,
         "epochs": 1,
         "scheduler": "plateau",
+        "model_size": "small",
         "min_lr": 1e-5,
         "patience": 2,
     }
