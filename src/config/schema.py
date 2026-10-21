@@ -129,14 +129,30 @@ class TrainingConfig(BaseModel):
         patience: Epoch patience threshold for early stopping.
         learning_rate: Learning Rate (LR), Alpha, or Learning Step.
         weight_decay: Weight Decay, Lambda, or Penalty.
-        device: Device identifier string ('cuda' or 'cpu').
-        checkpoints_dir: Path to storage experiments weights.
+        scheduler: LR schedule policy ('cosine', 'plateau', or 'none').
+        min_lr: Minimum learning rate floor for schedulers.
+        warmup_epochs: Number of epochs for linear warmup (if using warmup).
+        device: Device identifier string ('auto', 'cuda', or 'cpu').
     """
 
     epochs: int = Field(default=10, ge=1)
     patience: int = Field(default=3, ge=1)
     learning_rate: float = Field(default=1e-3, gt=0)
     weight_decay: float = Field(default=1e-4, ge=0.0)
+    scheduler: str = Field(
+        default="cosine",
+        description="LR scheduler type: 'cosine', 'plateau', or 'none'.",
+    )
+    min_lr: float = Field(
+        default=1e-5,
+        ge=0.0,
+        description="Minimum learning rate for scheduler.",
+    )
+    warmup_epochs: int = Field(
+        default=0,
+        ge=0,
+        description="Number of linear warmup epochs.",
+    )
     num_workers: int = Field(default=2, ge=1)
     cpu_resources_per_worker: float = Field(default=2.0, ge=1.0)
     gpu_resources_per_worker: float = Field(default=0.5, ge=0.0)
@@ -151,6 +167,9 @@ class TrainingConfig(BaseModel):
   patience: {self.patience}
   learning_rate: {self.learning_rate}
   weight_decay: {self.weight_decay}
+  scheduler: {self.scheduler}
+  min_lr: {self.min_lr}
+  warmup_epochs: {self.warmup_epochs}
   device: {self.device}"""
 
 
@@ -183,6 +202,26 @@ class TrackingConfig(BaseModel):
   tracking_uri: {self.tracking_uri}"""
 
 
+class ExportConfig(BaseModel):
+    """Configuration settings for ONNX model export and validation.
+
+    Attributes:
+        output_path: Target filepath for the exported ONNX model artifact.
+        opset_version: Target ONNX operator set version (default: 18).
+        tolerance: Maximum allowed absolute numerical difference against PyTorch.
+    """
+
+    output_path: Path = Field(default=Path("models/recyclenet.onnx"))
+    opset_version: int = Field(default=18, ge=7)
+    tolerance: float = Field(default=1e-5, gt=0.0)
+
+    def __str__(self) -> str:
+        return f"""ExportConfig:
+  output_path: {self.output_path}
+  opset_version: {self.opset_version}
+  tolerance: {self.tolerance}"""
+
+
 class HPOConfig(BaseModel):
     """Configuration for hyperparameter optimization (HPO).
 
@@ -211,7 +250,7 @@ class HPOConfig(BaseModel):
     max_epochs: int = Field(default=4, gt=0)
     grace_period: int = Field(default=2, gt=0)
     reduction_factor: int = Field(default=2, ge=2)
-    dataloader_n_workers: int = Field(default=4, ge=1)
+    dataloader_n_workers: int = Field(default=4, ge=0)
     max_concurrent_trials: int = Field(default=2, ge=1)
     cpu_resources_per_trial: float = Field(default=2.0, ge=1.0)
     gpu_resources_per_trial: float = Field(default=0.5, ge=0.0)
@@ -220,6 +259,55 @@ class HPOConfig(BaseModel):
         description="Target execution device: 'auto' (detects CUDA), 'cuda' or 'cpu'.",
     )
     experiment_name: str = Field(default="hpo_mobilenetv3_experiment")
+    best_config_path: Path = Field(default=Path("configs/best_hpo_config.yaml"))
+
+    @model_validator(mode="after")
+    def validate_hpo_ranges(self) -> HPOConfig:
+        """Validate hyperparameter search intervals and candidate batch sizes."""
+        lr_min, lr_max = self.learning_rate_range
+        if lr_min <= 0 or lr_max <= 0:
+            raise ValueError(
+                "learning_rate_range values must be positive (> 0), "
+                f"got: {self.learning_rate_range}"
+            )
+        if lr_min >= lr_max:
+            raise ValueError(
+                "learning_rate_range lower bound must be less than upper bound, "
+                f"got: {self.learning_rate_range}"
+            )
+
+        wd_min, wd_max = self.weight_decay_range
+        if wd_min <= 0 or wd_max <= 0:
+            raise ValueError(
+                "weight_decay_range values must be positive (> 0), "
+                f"got: {self.weight_decay_range}"
+            )
+        if wd_min >= wd_max:
+            raise ValueError(
+                "weight_decay_range lower bound must be less than upper bound, "
+                f"got: {self.weight_decay_range}"
+            )
+
+        if not self.batch_size:
+            raise ValueError("batch_size candidate list must not be empty")
+
+        return self
+
+    def __str__(self) -> str:
+        return f"""HPOConfig:
+  weight_decay_range: {self.weight_decay_range}
+  learning_rate_range: {self.learning_rate_range}
+  batch_size: {self.batch_size}
+  num_samples: {self.num_samples}
+  max_epochs: {self.max_epochs}
+  grace_period: {self.grace_period}
+  reduction_factor: {self.reduction_factor}
+  dataloader_n_workers: {self.dataloader_n_workers}
+  max_concurrent_trials: {self.max_concurrent_trials}
+  cpu_resources_per_trial: {self.cpu_resources_per_trial}
+  gpu_resources_per_trial: {self.gpu_resources_per_trial}
+  device: {self.device}
+  experiment_name: {self.experiment_name}"""
 
 
 class AppConfig(BaseSettings):
@@ -232,6 +320,7 @@ class AppConfig(BaseSettings):
         training: Model training configuration.
         tracking: MLflow tracking configuration.
         hpo: Hyperparameter optimization configuration.
+        export: Model serialization and ONNX export configuration.
     """
 
     ingestion: IngestionConfig
@@ -242,6 +331,7 @@ class AppConfig(BaseSettings):
     training: TrainingConfig
     tracking: TrackingConfig = Field(default_factory=TrackingConfig)
     hpo: HPOConfig = Field(default_factory=HPOConfig)
+    export: ExportConfig = Field(default_factory=ExportConfig)
 
     model_config = SettingsConfigDict(
         env_prefix="RECYCLENET_",
@@ -284,4 +374,6 @@ class AppConfig(BaseSettings):
 {self.transformation.__str__()}
 {self.reproducibility.__str__()}
 {self.training.__str__()}
-{self.tracking.__str__()}"""
+{self.tracking.__str__()}
+{self.hpo.__str__()}
+{self.export.__str__()}"""

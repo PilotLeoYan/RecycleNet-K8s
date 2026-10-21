@@ -95,3 +95,29 @@ def test_reproducibility_with_explicit_seed(fake_dataset: Path) -> None:
 
         assert torch.equal(input1, input2)
         assert torch.equal(target1, target2)
+
+
+def test_split_distribution_and_zero_overlap_verification(fake_dataset: Path) -> None:
+    config = TransformationConfig(
+        batch_size=4,
+        num_workers=0,
+        pin_memory=False,
+        seed=42,
+    )
+    data_trans = DataTransformation(config, seed=42)
+    assert data_trans.split_distribution == {}
+
+    dist_summary = data_trans.get_split_distribution(fake_dataset)
+    assert dist_summary["zero_overlap_verified"] is True
+    assert dist_summary["total_samples"] > 0
+    assert set(dist_summary["partitions"].keys()) == {"train", "validation", "test"}
+
+    total_partition_samples = sum(
+        part["total_samples"] for part in dist_summary["partitions"].values()
+    )
+    assert total_partition_samples == dist_summary["total_samples"]
+
+    for part in dist_summary["partitions"].values():
+        assert set(part["classes"].keys()) == set(data_trans.classes)
+        class_sum = sum(cls_info["count"] for cls_info in part["classes"].values())
+        assert class_sum == part["total_samples"]

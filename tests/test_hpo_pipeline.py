@@ -52,6 +52,7 @@ def mock_app_config(tmp_path: Path) -> AppConfig:
             cpu_resources_per_trial=1,
             gpu_resources_per_trial=0.0,
             device="cpu",
+            best_config_path=tmp_path / "best_hpo_config.yaml",
         ),
         tracking=TrackingConfig(
             experiment_name="test_hpo_exp",
@@ -93,6 +94,10 @@ def test_hpo_pipeline_run_success(
 
     assert best_config == {"learning_rate": 0.001, "batch_size": 8}
     assert best_metrics == {"valid_loss": 0.35, "valid_accuracy": 0.88}
+    assert (tmp_path / "best_hpo_config.yaml").exists()
+    loaded = AppConfig.from_yaml(tmp_path / "best_hpo_config.yaml")
+    assert loaded.training.learning_rate == 0.001
+    assert loaded.transformation.batch_size == 8
 
 
 def test_hpo_pipeline_run_with_errors_raises(

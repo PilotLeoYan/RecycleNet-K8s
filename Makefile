@@ -1,4 +1,4 @@
-.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test train hpo mlflow format lint test check
+.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test smoke-export train train-best hpo export super-train mlflow format lint test check
 
 CONFIG ?= configs/config.yaml
 EXTRA_ARGS ?=
@@ -24,15 +24,29 @@ smoke-test:
 	$(MAKE) test
 	$(MAKE) train CONFIG=configs/smoke.yaml
 	$(MAKE) hpo CONFIG=configs/smoke.yaml
+	$(MAKE) smoke-export
 	$(MAKE) sync-dev-gpu
 	$(MAKE) train CONFIG=configs/smoke.yaml
 	$(MAKE) hpo CONFIG=configs/smoke.yaml
+	$(MAKE) smoke-export
+
+smoke-export:
+	$(MAKE) export CONFIG=configs/smoke.yaml $(EXTRA_ARGS)
 
 train:
 	$(RAY_ENV) RAY_LOGGER_LEVEL=error $(RUN_SRC) train $(EXTRA_ARGS)
 
+train-best:
+	$(RAY_ENV) RAY_LOGGER_LEVEL=error $(RUN_SRC) train --use-best-hpo $(EXTRA_ARGS)
+
 hpo:
 	$(RAY_ENV) $(RUN_SRC) hpo $(EXTRA_ARGS)
+
+export:
+	uv run python -m src -c $(CONFIG) export $(EXTRA_ARGS)
+
+super-train:
+	$(RAY_ENV) RAY_LOGGER_LEVEL=error $(RUN_SRC) super-train $(EXTRA_ARGS)
 
 mlflow:
 	uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
