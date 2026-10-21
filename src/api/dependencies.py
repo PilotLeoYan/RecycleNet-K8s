@@ -1,20 +1,19 @@
 """FastAPI dependencies for RecycleNet API.
 
-Loads the RecycleNet (MobileNetV3-Small) PyTorch model into memory once during
+Loads the RecycleNet (MobileNetV3-Small) ONNX model into memory once during
 the application lifespan so that all inference requests share the same in-memory
-model without paying the cost of loading weights on every request.
+session without paying the cost of loading model files on every request.
 
-The model and the class-index→label mapping are attached to ``app.state`` so that
-any route can access them via ``request.app.state.model`` and
-``request.app.state.idx_to_class``.
+The model is loaded using ONNX Runtime. An ``OnnxModelWrapper`` provides a
+callable interface ``model(tensor) -> logits_tensor`` ensuring backwards
+compatibility with the predict route while offering fast, lightweight ONNX
+inference.
 
-Model resolution order
------------------------
-1. Path in the ``RECYCLENET_MODEL_PATH`` environment variable.
-2. MLflow Model Registry (latest Production version of "RecycleNet") when
-   ``RECYCLENET_MLFLOW_URI`` is set.
-3. Falls back to rebuilding the MobileNetV3-Small architecture with random
-   weights (useful for local development without a trained checkpoint).
+Model resolution order:
+1. Path in the ``RECYCLENET_MODEL_PATH`` environment variable (if exists).
+2. Local file ``models/recyclenet.onnx``.
+3. Automatically downloaded from Hugging Face Hub:
+   ``LeoYan/recyclenet-mobilenetv3/recyclenet.onnx``.
 """
 
 import json
@@ -24,12 +23,10 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import numpy as np
+import onnxruntime as ort
 import torch
 from fastapi import FastAPI
-
-from src.components.model import (
-    build_mobilenet_v3,  # import directo, evita el __init__ de components
-)
 
 logger = logging.getLogger("recyclenet.api")
 
@@ -44,114 +41,129 @@ _DEFAULT_CLASSES: dict[int, str] = {
     5: "trash",
 }
 
-
-def _load_from_path(
-    model_path: Path, num_classes: int
-) -> tuple[torch.nn.Module, dict[int, str]]:
-    """Load a saved ``state_dict`` from disk into the MobileNetV3-Small architecture."""
-    state = torch.load(model_path, map_location="cpu", weights_only=False)
-    idx_to_class = _DEFAULT_CLASSES.copy()
-
-    # If the checkpoint includes class metadata, use it
-    if isinstance(state, dict):
-        if "classes" in state and isinstance(state["classes"], list):
-            idx_to_class = {i: c for i, c in enumerate(state["classes"])}
-            num_classes = len(idx_to_class)
-        elif "class_to_idx" in state and isinstance(state["class_to_idx"], dict):
-            idx_to_class = {v: k for k, v in state["class_to_idx"].items()}
-            num_classes = len(idx_to_class)
-
-    model = build_mobilenet_v3(num_classes=num_classes, freeze_base=False)
-
-    # Support both bare state_dict and {"model_state_dict": ...} checkpoints.
-    if isinstance(state, dict) and "model_state_dict" in state:
-        state = state["model_state_dict"]
-
-    model.load_state_dict(state)
-    logger.info("Model loaded from %s with %d classes", model_path, num_classes)
-    return model, idx_to_class
+HF_REPO_ID = "LeoYan/recyclenet-mobilenetv3"
+DEFAULT_LOCAL_ONNX = Path("models/recyclenet.onnx")
 
 
-def _load_from_mlflow(
-    mlflow_uri: str, num_classes: int
-) -> tuple[torch.nn.Module, dict[int, str]]:
-    """Load the latest Production model from the MLflow Model Registry."""
-    import mlflow.pytorch  # lazy import – mlflow is optional
+class OnnxModelWrapper:
+    """Callable wrapper around an ONNX Runtime InferenceSession.
 
-    mlflow.set_tracking_uri(mlflow_uri)
-    model_uri = "models:/RecycleNet/Production"
-    logger.info("Loading model from MLflow: %s", model_uri)
-    model: torch.nn.Module = mlflow.pytorch.load_model(model_uri, map_location="cpu")
+    Accepts a PyTorch Tensor or NumPy array of shape ``(B, 3, 224, 224)``,
+    runs inference via ONNX Runtime, and returns a PyTorch Tensor of logits
+    ``(B, num_classes)``.
+    """
 
-    # Try to fetch the classes_mapping.json artifact from the same run.
-    idx_to_class = _DEFAULT_CLASSES.copy()
+    def __init__(self, session: ort.InferenceSession) -> None:
+        self.session = session
+        self.input_name: str = session.get_inputs()[0].name
+        self.output_name: str = session.get_outputs()[0].name
+
+    def __call__(self, x: torch.Tensor | np.ndarray) -> torch.Tensor:
+        """Execute forward inference."""
+        if isinstance(x, torch.Tensor):
+            x_np = x.detach().cpu().numpy().astype(np.float32)
+        else:
+            x_np = np.asarray(x, dtype=np.float32)
+
+        raw_outputs: list[np.ndarray] = self.session.run(
+            [self.output_name], {self.input_name: x_np}
+        )
+        return torch.from_numpy(raw_outputs[0])
+
+    def eval(self) -> None:
+        """No-op for compatibility with PyTorch model interface."""
+
+
+def _resolve_model_path() -> Path:
+    """Resolve the ONNX model file path, downloading from Hugging Face if needed."""
+    model_path_env = os.getenv("RECYCLENET_MODEL_PATH")
+    if model_path_env and Path(model_path_env).exists():
+        logger.info("Using model path from RECYCLENET_MODEL_PATH: %s", model_path_env)
+        return Path(model_path_env)
+
+    if DEFAULT_LOCAL_ONNX.exists():
+        logger.info("Found local ONNX model at %s", DEFAULT_LOCAL_ONNX)
+        return DEFAULT_LOCAL_ONNX
+
+    # Auto-download from Hugging Face repo
+    logger.info(
+        "Local model not found. Downloading recyclenet.onnx from Hugging Face (%s)...",
+        HF_REPO_ID,
+    )
+    from huggingface_hub import hf_hub_download
+
+    downloaded = hf_hub_download(
+        repo_id=HF_REPO_ID,
+        filename="recyclenet.onnx",
+        local_dir=str(DEFAULT_LOCAL_ONNX.parent),
+    )
+    return Path(downloaded)
+
+
+def _load_class_mapping(model_dir: Path) -> dict[int, str]:
+    """Attempt to load class mapping JSON from directory or Hugging Face."""
+    local_mapping = model_dir / "classes_mapping.json"
+    if local_mapping.exists():
+        try:
+            with open(local_mapping, encoding="utf-8") as f:
+                data: dict[str, str] = json.load(f)
+                return {int(k): v for k, v in data.items()}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to parse local classes_mapping.json: %s", exc)
+
     try:
-        client = mlflow.tracking.MlflowClient(tracking_uri=mlflow_uri)
-        versions = client.get_latest_versions("RecycleNet", stages=["Production"])
-        if versions:
-            run_id = versions[0].run_id
-            local_path = mlflow.artifacts.download_artifacts(
-                run_id=run_id,
-                artifact_path="classes_mapping.json",
-                tracking_uri=mlflow_uri,
-            )
-            raw: dict[str, str] = json.loads(Path(local_path).read_text())
-            idx_to_class = {int(k): v for k, v in raw.items()}
-            logger.info("Class mapping loaded from MLflow artifact: %s", idx_to_class)
+        from huggingface_hub import hf_hub_download
+
+        mapping_file = hf_hub_download(
+            repo_id=HF_REPO_ID,
+            filename="classes_mapping.json",
+            local_dir=str(model_dir),
+        )
+        with open(mapping_file, encoding="utf-8") as f:
+            data_hf: dict[str, str] = json.load(f)
+            return {int(k): v for k, v in data_hf.items()}
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "Could not load class mapping from MLflow: %s – using defaults", exc
+            "Could not fetch classes_mapping.json from HF (%s): %s – using defaults",
+            HF_REPO_ID,
+            exc,
         )
 
-    return model, idx_to_class
+    return _DEFAULT_CLASSES.copy()
+
+
+def _load_onnx_session(model_path: Path) -> tuple[OnnxModelWrapper, dict[int, str]]:
+    """Initialize ONNX Runtime inference session with CPU provider."""
+    opts = ort.SessionOptions()
+    opts.inter_op_num_threads = 2
+    opts.intra_op_num_threads = 2
+    session = ort.InferenceSession(
+        str(model_path),
+        sess_options=opts,
+        providers=["CPUExecutionProvider"],
+    )
+    wrapper = OnnxModelWrapper(session)
+    idx_to_class = _load_class_mapping(model_path.parent)
+    logger.info("ONNX model loaded successfully from %s", model_path)
+    return wrapper, idx_to_class
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ANN001
-    """Load the RecycleNet model at startup and release it on shutdown.
-
-    Resolution order:
-    1. ``RECYCLENET_MODEL_PATH`` env-var  → local ``.pt`` / ``.pth`` checkpoint.
-    2. ``RECYCLENET_MLFLOW_URI`` env-var  → MLflow Model Registry (Production).
-    3. Fallback: fresh MobileNetV3-Small with random weights (dev mode).
-    """
-    idx_to_class: dict[int, str] = _DEFAULT_CLASSES.copy()
-    num_classes = len(idx_to_class)
-
-    model_path_env = os.getenv("RECYCLENET_MODEL_PATH")
-    default_local_path = Path("models/recyclenet_mobilenetv3.pt")
-    mlflow_uri_env = os.getenv("RECYCLENET_MLFLOW_URI")
-
+    """Load the RecycleNet ONNX model at startup and release it on shutdown."""
     try:
-        if model_path_env and Path(model_path_env).exists():
-            model_path = Path(model_path_env)
-            model, idx_to_class = _load_from_path(model_path, num_classes)
+        model_path = _resolve_model_path()
+        model, idx_to_class = _load_onnx_session(model_path)
 
-        elif default_local_path.exists():
-            logger.info("Found local model at default path: %s", default_local_path)
-            model, idx_to_class = _load_from_path(default_local_path, num_classes)
-
-        elif mlflow_uri_env:
-            model, idx_to_class = _load_from_mlflow(mlflow_uri_env, num_classes)
-            num_classes = len(idx_to_class)
-
-        else:
-            logger.warning(
-                "No RECYCLENET_MODEL_PATH or local checkpoint found. "
-                "Running with untrained MobileNetV3-Small weights (dev mode)."
-            )
-            model = build_mobilenet_v3(num_classes=num_classes, freeze_base=False)
-
-        model.eval()
         app.state.model = model
         app.state.idx_to_class = idx_to_class
         app.state.model_ready = True
-        logger.info("RecycleNet model ready. Classes: %s", idx_to_class)
+        logger.info("RecycleNet ONNX model ready. Classes: %s", idx_to_class)
 
     except Exception as exc:  # noqa: BLE001
-        logger.error("Failed to load model: %s", exc)
+        logger.error("Failed to load ONNX model: %s", exc)
         app.state.model = None
-        app.state.idx_to_class = idx_to_class
+        app.state.idx_to_class = _DEFAULT_CLASSES.copy()
         app.state.model_ready = False
 
     yield

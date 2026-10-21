@@ -22,3 +22,9 @@ mlflow.db
 
 # files
 pyrightconfig.json
+
+# models
+*.pt
+*.pth
+*.onnx
+!models/README.md
