@@ -12,8 +12,6 @@ inference.
 Model resolution order:
 1. Path in the ``RECYCLENET_MODEL_PATH`` environment variable (if exists).
 2. Local file ``models/recyclenet.onnx``.
-3. Automatically downloaded from Hugging Face Hub:
-   ``LeoYan/recyclenet-mobilenetv3/recyclenet.onnx``.
 """
 
 import json
@@ -41,7 +39,6 @@ _DEFAULT_CLASSES: dict[int, str] = {
     5: "trash",
 }
 
-HF_REPO_ID = "LeoYan/recyclenet-mobilenetv3"
 DEFAULT_LOCAL_ONNX = Path("models/recyclenet.onnx")
 
 
@@ -75,7 +72,7 @@ class OnnxModelWrapper:
 
 
 def _resolve_model_path() -> Path:
-    """Resolve the ONNX model file path, downloading from Hugging Face if needed."""
+    """Resolve the ONNX model file path."""
     model_path_env = os.getenv("RECYCLENET_MODEL_PATH")
     if model_path_env and Path(model_path_env).exists():
         logger.info("Using model path from RECYCLENET_MODEL_PATH: %s", model_path_env)
@@ -85,23 +82,13 @@ def _resolve_model_path() -> Path:
         logger.info("Found local ONNX model at %s", DEFAULT_LOCAL_ONNX)
         return DEFAULT_LOCAL_ONNX
 
-    # Auto-download from Hugging Face repo
-    logger.info(
-        "Local model not found. Downloading recyclenet.onnx from Hugging Face (%s)...",
-        HF_REPO_ID,
+    raise FileNotFoundError(
+        f"ONNX model not found at {DEFAULT_LOCAL_ONNX} or RECYCLENET_MODEL_PATH."
     )
-    from huggingface_hub import hf_hub_download
-
-    downloaded = hf_hub_download(
-        repo_id=HF_REPO_ID,
-        filename="recyclenet.onnx",
-        local_dir=str(DEFAULT_LOCAL_ONNX.parent),
-    )
-    return Path(downloaded)
 
 
 def _load_class_mapping(model_dir: Path) -> dict[int, str]:
-    """Attempt to load class mapping JSON from directory or Hugging Face."""
+    """Attempt to load class mapping JSON from directory, falling back to defaults."""
     local_mapping = model_dir / "classes_mapping.json"
     if local_mapping.exists():
         try:
@@ -110,24 +97,6 @@ def _load_class_mapping(model_dir: Path) -> dict[int, str]:
                 return {int(k): v for k, v in data.items()}
         except Exception as exc:  # noqa: BLE001
             logger.warning("Failed to parse local classes_mapping.json: %s", exc)
-
-    try:
-        from huggingface_hub import hf_hub_download
-
-        mapping_file = hf_hub_download(
-            repo_id=HF_REPO_ID,
-            filename="classes_mapping.json",
-            local_dir=str(model_dir),
-        )
-        with open(mapping_file, encoding="utf-8") as f:
-            data_hf: dict[str, str] = json.load(f)
-            return {int(k): v for k, v in data_hf.items()}
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "Could not fetch classes_mapping.json from HF (%s): %s – using defaults",
-            HF_REPO_ID,
-            exc,
-        )
 
     return _DEFAULT_CLASSES.copy()
 
