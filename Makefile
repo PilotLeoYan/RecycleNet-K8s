@@ -1,4 +1,4 @@
-.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test smoke-export train train-best hpo export super-train mlflow format lint test check
+.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test smoke-export train train-best hpo export super-train mlflow api format lint test check
 
 CONFIG ?= configs/config.yaml
 EXTRA_ARGS ?=
@@ -50,6 +50,9 @@ super-train:
 
 mlflow:
 	uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
+
+api:
+	uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload $(EXTRA_ARGS)
 
 
 format:
