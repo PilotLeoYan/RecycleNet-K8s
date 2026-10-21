@@ -15,8 +15,10 @@ The endpoint:
 
 import base64
 import io
+import json
 import logging
 
+import anyio
 import torch
 import torch.nn.functional as F
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -71,6 +73,13 @@ def _preprocess(image_bytes: bytes) -> torch.Tensor:
     return tensor.unsqueeze(0)  # (1, 3, 224, 224)
 
 
+def _run_inference(model: torch.nn.Module, input_tensor: torch.Tensor) -> torch.Tensor:
+    """Execute model inference in worker thread under torch.inference_mode."""
+    with torch.inference_mode():
+        logits: torch.Tensor = model(input_tensor)  # (1, num_classes)
+        return F.softmax(logits, dim=1)[0]  # (num_classes,)
+
+
 @router.post(
     "/",
     response_model=PredictionResult,
@@ -84,6 +93,10 @@ async def predict(
     ),
     latitude: float | None = Form(None, description="GPS latitude"),
     longitude: float | None = Form(None, description="GPS longitude"),
+    telemetry: str | None = Form(
+        None,
+        description='Optional telemetry JSON: {"latitude": 0, "longitude": 0}',
+    ),
 ) -> PredictionResult:
     """Classify a waste image and return the predicted category with confidence.
 
@@ -123,10 +136,8 @@ async def predict(
     # ── Preprocessing ────────────────────────────────────────────────────────
     input_tensor = _preprocess(image_bytes)  # (1, 3, 224, 224)
 
-    # ── Inference ────────────────────────────────────────────────────────────
-    with torch.no_grad():
-        logits: torch.Tensor = model(input_tensor)  # (1, num_classes)
-        probs: torch.Tensor = F.softmax(logits, dim=1)[0]  # (num_classes,)
+    # ── Inference (offloaded to thread pool to prevent event loop freeze) ───
+    probs = await anyio.to_thread.run_sync(_run_inference, model, input_tensor)
 
     # ── Build response ───────────────────────────────────────────────────────
     top1_idx: int = int(probs.argmax().item())
@@ -138,22 +149,40 @@ async def predict(
         for i, p in enumerate(probs.tolist())
     }
 
-    telemetry = (
-        Telemetry(latitude=latitude, longitude=longitude)
-        if latitude is not None or longitude is not None
-        else None
-    )
+    # ── Parse Telemetry ──────────────────────────────────────────────────────
+    telemetry_obj: Telemetry | None = None
+    if telemetry and telemetry.strip():
+        try:
+            raw_tel = json.loads(telemetry)
+            if isinstance(raw_tel, dict):
+                lat_raw = raw_tel.get("latitude")
+                lon_raw = raw_tel.get("longitude")
+                lat = float(lat_raw) if lat_raw is not None else None
+                lon = float(lon_raw) if lon_raw is not None else None
+                telemetry_obj = Telemetry(latitude=lat, longitude=lon)
+        except Exception as exc:
+            safe_telemetry = (
+                telemetry.replace("\r", "").replace("\n", "")
+                if telemetry is not None
+                else None
+            )
+            logger.warning(
+                "Could not parse telemetry JSON: %s (%s)", safe_telemetry, exc
+            )
+
+    if telemetry_obj is None and (latitude is not None or longitude is not None):
+        telemetry_obj = Telemetry(latitude=latitude, longitude=longitude)
 
     logger.info(
         "Prediction: %s (%.2f%%)  telemetry=%s",
         predicted_class,
         top1_conf * 100,
-        telemetry,
+        telemetry_obj,
     )
 
     return PredictionResult(
         predicted_class=predicted_class,
         confidence=round(top1_conf, 6),
         class_probabilities=class_probabilities,
-        telemetry=telemetry,
+        telemetry=telemetry_obj,
     )
