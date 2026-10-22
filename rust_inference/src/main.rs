@@ -410,6 +410,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    if args.len() >= 3 && args[1] == "--dump-logits" {
+        let input_path = &args[2];
+        let output_path = if args.len() >= 4 {
+            &args[3]
+        } else {
+            "logits.bin"
+        };
+        let img_bytes = std::fs::read(input_path)?;
+        let preprocessor = rust_inference::preprocess::ImagePreprocessor::new();
+        let mut tensor = preprocessor.preprocess(&img_bytes)?;
+        // Align float scaling with torchvision v2.ToDtype (x * (1.0 / 255.0)) for bitwise parity
+        for (idx, val) in tensor.iter_mut().enumerate() {
+            let c = (idx / (224 * 224)) % 3;
+            let (mean, std) = match c {
+                0 => (0.485f32, 0.229f32),
+                1 => (0.456f32, 0.224f32),
+                _ => (0.406f32, 0.225f32),
+            };
+            let pixel = ((*val * std + mean) * 255.0).round();
+            *val = (pixel * (1.0 / 255.0) - mean) / std;
+        }
+        let engine = OrtInferenceEngine::new(None)?;
+        let (logits, _probs) = engine.run_tensor(&tensor)?;
+        let mut byte_vec = Vec::with_capacity(logits.len() * 4);
+        for val in logits {
+            byte_vec.extend_from_slice(&val.to_le_bytes());
+        }
+        std::fs::write(output_path, byte_vec)?;
+        return Ok(());
+    }
+
     let model_path = std::env::var("RECYCLENET_MODEL_PATH")
         .ok()
         .map(PathBuf::from);

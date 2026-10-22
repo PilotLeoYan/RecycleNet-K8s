@@ -327,6 +327,52 @@ class TestPreprocessingParity:
             f"Train-serve skew in pattern '{pattern}'! Max diff: {max_abs_diff}"
         )
 
+    @pytest.mark.parametrize("pattern", ["noise", "gradient"])
+    def test_raw_logits_numerical_parity(
+        self, pattern: str, tmp_path: Path, onnx_model_path: Path
+    ) -> None:
+        """Verify raw logits numerical parity between Python and Rust ONNX engine."""
+        image_bytes = _create_test_image_bytes(224, 224, pattern=pattern)
+
+        # 1. Preprocess test image in Python and run ONNX session
+        py_preprocessor = ImagePreprocessor()
+        py_tensor = py_preprocessor.preprocess(image_bytes).numpy()
+
+        session = ort.InferenceSession(str(onnx_model_path))
+        input_name = session.get_inputs()[0].name
+        raw_outputs = session.run(None, {input_name: py_tensor})
+        py_logits = np.asarray(raw_outputs[0], dtype=np.float32).flatten()
+
+        # 2. Invoke Rust binary --dump-logits CLI
+        rust_binary = _resolve_rust_binary()
+        img_file = tmp_path / f"test_{pattern}.png"
+        out_bin = tmp_path / f"out_logits_{pattern}.bin"
+        img_file.write_bytes(image_bytes)
+
+        env = os.environ.copy()
+        env["RECYCLENET_MODEL_PATH"] = str(onnx_model_path.resolve())
+        if os.name == "nt":
+            env["PATH"] = f"{WINDOWS_CARGO_PATH};{env.get('PATH', '')}"
+
+        dylib = _resolve_ort_dylib()
+        if dylib:
+            env["ORT_DYLIB_PATH"] = dylib
+
+        subprocess.run(
+            [str(rust_binary), "--dump-logits", str(img_file), str(out_bin)],
+            env=env,
+            check=True,
+        )
+
+        rust_logits = np.fromfile(out_bin, dtype="<f4")
+
+        # 3. Assert shape and numerical parity (< 1e-5)
+        assert rust_logits.shape == (6,)
+        max_abs_diff = float(np.max(np.abs(py_logits - rust_logits)))
+        assert max_abs_diff < 1e-5, (
+            f"Raw logits disparity in pattern '{pattern}'! Max diff: {max_abs_diff}"
+        )
+
 
 class TestEndToEndParity:
     """Verify inference parity between Python FastAPI and Rust Axum services."""
