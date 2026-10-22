@@ -180,6 +180,17 @@ flowchart LR
     end
 ```
 
+## Supply Chain Security & CVE Version Patches
+
+Transitive dependencies are hardened via `[tool.uv] override-dependencies` in `pyproject.toml` and locked in `uv.lock`, alongside CodeQL `CWE-020` URL/domain sanitization in OIDC claim verification:
+
+| Package | Patched Version | Security Remediation |
+| :--- | :---: | :--- |
+| `gitpython` | `3.1.62` → **`3.2.1`** | Fixes **High** RCE in submodule `.git` path validation prior to cloning |
+| `graphql-core` | `3.2.11` → **`3.2.13`** | Fixes two **High** DoS vulnerabilities in `max_tokens` parser & field validation |
+| `opentelemetry-api` | `1.44.0` → **`1.45.1`** | Fixes **Moderate** DoS in unbounded `tracestate` header parsing (`sdk` & `proto` synced) |
+| `cryptography` | **`>= 50.0.0`** | Enforces hardened OpenSSL bindings and X.509 primitives |
+
 ## Offline Verification & DevSecOps CLI
 
 Verify CI quality gates, OIDC token claims exchange, and Cloud Run scaling rules offline:

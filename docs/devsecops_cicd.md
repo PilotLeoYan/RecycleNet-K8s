@@ -261,3 +261,46 @@ Options:
 - **Static Workflow Linting:** Parses `.github/workflows/ci.yaml` and `.github/workflows/cd.yaml` to ensure all 5 quality gates and OIDC actions are configured correctly.
 - **OIDC Claims Simulation:** Simulates the STS cryptographic token exchange, verifying subject claim restrictions (`repo:PilotLeoYan/RecycleNet-K8s:ref:refs/heads/main`).
 - **Cloud Run Scaling Trajectory:** Computes instance scaling trajectories across simulated request traffic patterns, verifying min/max boundaries and concurrency quotas.
+
+---
+
+## 8. Supply Chain Security, CVE Version Patches & CodeQL CWE-020 Hardening
+
+Beyond runtime container hardening, Phase 4 enforces proactive software supply chain security across both transitive Python dependencies (`pyproject.toml` and `uv.lock`) and static application security testing (**GitHub Advanced Security / CodeQL**).
+
+### 8.1 Transitive Dependency CVE Remediation (`[tool.uv] override-dependencies`)
+
+To eliminate vulnerabilities introduced by upstream transitive dependencies (such as MLflow, GitPython, and OpenTelemetry), `pyproject.toml` pins hardened floor versions via `[tool.uv] override-dependencies` and locks their SHA-256 digests in `uv.lock`:
+
+```toml
+[tool.uv]
+package = false
+override-dependencies = [
+    "cryptography>=50.0.0",
+    "gitpython>=3.2.1",
+    "graphql-core>=3.2.12",
+    "opentelemetry-api>=1.45.1",
+]
+```
+
+| Package | Previous Version | Patched Version (`uv.lock`) | Override Constraint | Severity & Vulnerability Remediated |
+| :--- | :---: | :---: | :---: | :--- |
+| **`gitpython`** | `3.1.62` | **`3.2.1`** | `>=3.2.1` | **High (Dependabot #26):** Remote Code Execution (RCE) where submodule `.git` paths were validated only after cloning into untrusted repositories. |
+| **`graphql-core`** | `3.2.11` | **`3.2.13`** | `>=3.2.12` | **High (Dependabot #24 & #25):** Denial of Service (DoS) via comment tokens bypassing `max_tokens` parser limits and quadratic complexity in `OverlappingFieldsCanBeMerged` validation. |
+| **`opentelemetry-api`** | `1.44.0` | **`1.45.1`** | `>=1.45.1` | **Moderate (Dependabot #23):** Unbounded `tracestate` W3C header parsing resulting in CPU/memory exhaustion (`opentelemetry-sdk` & `opentelemetry-proto` upgraded in lockstep to `1.45.1`). |
+| **`cryptography`** | `<50.0.0` | **`>=50.0.0`** | `>=50.0.0` | **High:** Enforces modern OpenSSL bindings and X.509 certificate verification primitives. |
+
+### 8.2 CodeQL SAST Hardening (`CWE-020: Incomplete URL Substring Sanitization`)
+
+During automated `CodeQL` analysis (`py/incomplete-url-substring-sanitization`), naive substring or prefix checks on URLs and domains are vulnerable to subdomain/suffix spoofing (e.g., `https://iam.googleapis.com.attacker.com/projects/123` or `deployer@proj.iam.gserviceaccount.com.attacker.com`).
+
+In `src/devsecops/orchestrator.py` (`GcpOidcWorkloadIdentitySimulator.validate_claims`), OIDC claim verification is hardened using RFC-compliant URL parsing (`urllib.parse.urlparse`) and exact domain label matching:
+
+1. **OIDC Audience (`aud`) Verification:**
+   - Parses `audience` with `urllib.parse.urlparse(audience)`.
+   - Enforces exact equality on `parsed_audience.scheme == "https"` and `parsed_audience.hostname == "iam.googleapis.com"`, combined with path prefix `/projects/`.
+2. **GCP IAM Service Account (`service_account`) Verification:**
+   - Partitions the email identifier via `sa.partition("@")` and rejects embedded path/scheme characters (`/` or `:`).
+   - Splits the domain into labels and verifies the exact 4-label GCP IAM structure: `<project-id>.iam.gserviceaccount.com` (`sa_domain_parts[1:] == ["iam", "gserviceaccount", "com"]`).
+3. **Regression Testing:**
+   - Verified via spoofed-domain unit tests in `tests/test_devsecops_orchestrator.py`.
