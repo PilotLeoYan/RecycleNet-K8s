@@ -1,7 +1,7 @@
 # ==============================================================================
 # RecycleNet High-Performance Rust Microservice Dockerfile
 # Ultra-lightweight multi-stage build (< 50MB runtime footprint)
-# Zero-trust security: unprivileged non-root execution (UID 10001)
+# Zero-trust security: unprivileged non-root execution (appuser, UID 10001)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -47,6 +47,10 @@ RUN mkdir -p /app/models && \
 # Stage 2: Minimal Distroless/Slim Runtime
 # ------------------------------------------------------------------------------
 FROM debian:bookworm-slim AS runtime
+
+LABEL org.opencontainers.image.title="RecycleNet Rust Axum Inference Service" \
+      org.opencontainers.image.description="Ultra-lightweight multi-stage Rust + ONNX Runtime inference container" \
+      org.opencontainers.image.vendor="RecycleNet-K8s"
 
 # Install minimal certificates for external telemetry or outgoing HTTPS
 RUN apt-get update && apt-get install -y --no-install-recommends \
