@@ -75,6 +75,9 @@ def test_repository_workflow_loader_real_repo() -> None:
     with pytest.raises(FileNotFoundError):
         loader.load_text("path/that/does/not/exist.txt")
 
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        loader.load_text("../outside_repo.txt")
+
 
 def test_repository_workflow_loader_yaml_normalization(tmp_path: Path) -> None:
     """Verify boolean True keys in YAML are normalized to 'on'."""
@@ -443,6 +446,24 @@ def test_gcp_oidc_workload_identity_simulator() -> None:
     assert any("Invalid OIDC audience" in v for v in spoofed_check.violations)
     assert any("Invalid GCP service account" in v for v in spoofed_check.violations)
 
+    # Spoofed OIDC subject ('sub') claim check
+    spoofed_sub_claims: dict[str, Any] = {
+        "iss": "https://token.actions.githubusercontent.com",
+        "sub": "repo:attacker/evil-repo:ref:refs/heads/feature",
+        "aud": (
+            "https://iam.googleapis.com/projects/1234567890/locations/global/"
+            "workloadIdentityPools/github-pool/providers/github-provider"
+        ),
+        "repository": "PilotLeoYan/RecycleNet-K8s",
+        "ref": "refs/heads/main",
+        "service_account": "recyclenet-cd-sa@PROJECT_ID.iam.gserviceaccount.com",
+    }
+    spoofed_sub_check = sim.validate_claims(spoofed_sub_claims)
+    assert spoofed_sub_check.is_valid is False
+    assert any(
+        "Untrusted OIDC subject claim" in v for v in spoofed_sub_check.violations
+    )
+
     # Exchange steps
     steps = sim.simulate_exchange()
     assert len(steps) == 4
@@ -510,3 +531,13 @@ def test_orchestrator_main(capsys: pytest.CaptureFixture[str]) -> None:
     assert "DevSecOps & Cloud Deployment Security Audit" in captured.out
     assert "GCP Workload Identity Federation OIDC 4-Step Exchange" in captured.out
     assert "Google Cloud Run Serverless Autoscaling Simulation" in captured.out
+
+    # Test CLI flags (--ci-only, --cd-only, --format-md)
+    assert devsecops_main(["--ci-only"]) == 0
+    captured_ci = capsys.readouterr()
+    assert "**Rule Sets Audited**: `2`" in captured_ci.out
+
+    assert devsecops_main(["--cd-only", "--format-md"]) == 0
+    captured_cd = capsys.readouterr()
+    assert "**Rule Sets Audited**: `1`" in captured_cd.out
+    assert "\n\n---\n\n" in captured_cd.out

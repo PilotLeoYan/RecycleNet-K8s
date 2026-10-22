@@ -7,6 +7,7 @@ serverless autoscaling simulation.
 
 from __future__ import annotations
 
+import argparse
 import math
 import sys
 import tomllib
@@ -168,17 +169,27 @@ class RepositoryWorkflowLoader:
         """
         self.root_dir = root_dir if root_dir is not None else Path(".")
 
+    def _resolve_safe_path(self, relative_path: str) -> Path:
+        """Resolve a relative path and enforce repository root containment (CWE-022)."""
+        base_resolved = self.root_dir.resolve()
+        target_resolved = (self.root_dir / relative_path).resolve()
+        if not target_resolved.is_relative_to(base_resolved):
+            raise ValueError(
+                f"Path traversal detected for relative path '{relative_path}'."
+            )
+        return self.root_dir / relative_path
+
     def file_exists(self, relative_path: str) -> bool:
         """Check whether a file exists at the given relative path."""
-        target = self.root_dir / relative_path
+        target = self._resolve_safe_path(relative_path)
         return target.is_file()
 
     def load_text(self, relative_path: str) -> str:
         """Load raw text contents of a file relative to repository root."""
-        target = self.root_dir / relative_path
+        target = self._resolve_safe_path(relative_path)
         if not target.is_file():
             raise FileNotFoundError(
-                f"Workflow file '{relative_path}' not found at {target.resolve()}"
+                f"Workflow file '{relative_path}' not found in repository root"
             )
         return target.read_text(encoding="utf-8")
 
@@ -653,12 +664,12 @@ class GcpOidcWorkloadIdentitySimulator:
         if claims is None:
             claims = {
                 "iss": "https://token.actions.githubusercontent.com",
-                "sub": "repo:leofabyan/RecycleNet-K8s:ref:refs/heads/main",
+                "sub": "repo:PilotLeoYan/RecycleNet-K8s:ref:refs/heads/main",
                 "aud": (
                     "https://iam.googleapis.com/projects/1234567890/locations/global/"
                     "workloadIdentityPools/github-pool/providers/github-provider"
                 ),
-                "repository": "leofabyan/RecycleNet-K8s",
+                "repository": "PilotLeoYan/RecycleNet-K8s",
                 "ref": "refs/heads/main",
                 "service_account": (
                     "recyclenet-cd-sa@PROJECT_ID.iam.gserviceaccount.com"
@@ -678,6 +689,15 @@ class GcpOidcWorkloadIdentitySimulator:
             violations.append(
                 f"Invalid OIDC issuer: '{issuer}'. Expected "
                 "'https://token.actions.githubusercontent.com'."
+            )
+
+        if subject and (
+            not subject.startswith("repo:")
+            or not subject.endswith("/RecycleNet-K8s:ref:refs/heads/main")
+        ):
+            violations.append(
+                f"Untrusted OIDC subject claim: '{subject}'. "
+                "Expected 'repo:<owner>/RecycleNet-K8s:ref:refs/heads/main'."
             )
 
         parsed_audience = urlparse(audience)
@@ -854,27 +874,57 @@ class CloudRunDeploymentSimulator:
 # ==============================================================================
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """Execute DevSecOps workflow audit and cloud deployment simulation."""
-    loader = RepositoryWorkflowLoader(root_dir=Path("."))
-    auditor = DevSecOpsAuditor(loader=loader)
-    report = auditor.run_audit()
+    parser = argparse.ArgumentParser(
+        description=(
+            "RecycleNet DevSecOps workflow audit and GCP cloud deployment simulator."
+        )
+    )
+    parser.add_argument(
+        "--ci-only",
+        action="store_true",
+        help="Execute only CI quality gate rule validation",
+    )
+    parser.add_argument(
+        "--cd-only",
+        action="store_true",
+        help="Execute only CD GCP OIDC and deployment rule validation",
+    )
+    parser.add_argument(
+        "--format-md",
+        action="store_true",
+        help="Export execution summary as GitHub Flavored Markdown",
+    )
+    args = parser.parse_args(argv if argv is not None else [])
 
-    print(report.format_markdown())
-    print("\n" + "=" * 80 + "\n")
+    loader = RepositoryWorkflowLoader(root_dir=Path("."))
+    rules: list[DevSecOpsRuleProtocol] | None = None
+    if args.ci_only and not args.cd_only:
+        rules = [CiWorkflowValidator(), DevSecOpsToolchainValidator()]
+    elif args.cd_only and not args.ci_only:
+        rules = [CdWorkflowGcpOidcValidator()]
+
+    auditor = DevSecOpsAuditor(loader=loader, rules=rules)
+    report = auditor.run_audit()
 
     oidc_sim = GcpOidcWorkloadIdentitySimulator()
     claim_check = oidc_sim.validate_claims()
     exchange_steps = oidc_sim.simulate_exchange()
-    print(oidc_sim.format_simulation_table(exchange_steps))
-    print("\n" + "=" * 80 + "\n")
 
     cloudrun_sim = CloudRunDeploymentSimulator()
     scaling_steps = cloudrun_sim.simulate_traffic_stages()
-    print(cloudrun_sim.format_scaling_table(scaling_steps))
+
+    separator = "\n\n---\n\n" if args.format_md else "\n\n" + "=" * 80 + "\n\n"
+    sections = [
+        report.format_markdown(),
+        oidc_sim.format_simulation_table(exchange_steps),
+        cloudrun_sim.format_scaling_table(scaling_steps),
+    ]
+    print(separator.join(sections))
 
     return 0 if report.is_valid and claim_check.is_valid else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

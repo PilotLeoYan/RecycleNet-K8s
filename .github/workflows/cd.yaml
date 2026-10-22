@@ -33,10 +33,13 @@ jobs:
 
       - name: Check GCP OIDC Configuration
         id: gcp_config
+        env:
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SA_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
         run: |
-          if [ -n "${{ secrets.GCP_PROJECT_ID }}" ] && \
-             [ -n "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] && \
-             [ -n "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" ]; then
+          if [ -n "$PROJECT_ID" ] && \
+             [ -n "$GCP_WIF_PROVIDER" ] && \
+             [ -n "$GCP_SA_EMAIL" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
             echo "GCP Workload Identity Federation credentials detected."
           else
@@ -48,7 +51,8 @@ jobs:
         id: image_tag
         run: |
           TAG="sha-${{ github.sha }}"
-          IMAGE_URI="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}"
+          TARGET_PROJECT="${PROJECT_ID:-recyclenet-gcp-dryrun}"
+          IMAGE_URI="${GAR_LOCATION}-docker.pkg.dev/${TARGET_PROJECT}/${REPOSITORY}/${IMAGE_NAME}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
           echo "tags=$IMAGE_URI:$TAG,$IMAGE_URI:latest" >> "$GITHUB_OUTPUT"
@@ -95,6 +99,7 @@ jobs:
             --cpu=1
             --min-instances=1
             --max-instances=5
+            --concurrency=80
             --allow-unauthenticated
 
       - name: Dry-Run Deployment Notice
