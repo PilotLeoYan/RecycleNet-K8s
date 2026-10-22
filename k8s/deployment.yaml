@@ -6,11 +6,13 @@ metadata:
     app: recyclenet
     component: api
     tier: backend
+    runtime: python
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: recyclenet
+      component: api
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -21,27 +23,66 @@ spec:
       labels:
         app: recyclenet
         component: api
+        tier: backend
+        runtime: python
     spec:
+      # Pod-level security context enforcing non-root execution
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
         fsGroup: 10001
+      # Soft anti-affinity to spread replicas across distinct nodes for High Availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - recyclenet
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: recyclenet-api
-          image: recyclenet:latest
+          image: recyclenet-api:local
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8000
               protocol: TCP
+          # Bulk decouple environment variables from ConfigMap and Secret
+          envFrom:
+            - configMapRef:
+                name: recyclenet-config
+            - secretRef:
+                name: recyclenet-secret
+          # Granular environment variable overrides and key references
           env:
             - name: PORT
-              value: "8000"
+              valueFrom:
+                configMapKeyRef:
+                  name: recyclenet-config
+                  key: PORT
             - name: RECYCLENET_MODEL_PATH
-              value: "/app/models/recyclenet.onnx"
+              valueFrom:
+                configMapKeyRef:
+                  name: recyclenet-config
+                  key: RECYCLENET_MODEL_PATH
             - name: LOG_LEVEL
-              value: "INFO"
+              valueFrom:
+                configMapKeyRef:
+                  name: recyclenet-config
+                  key: LOG_LEVEL
+            - name: RECYCLENET_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: recyclenet-secret
+                  key: RECYCLENET_API_KEY
+                  optional: true
+          # Compute resource guarantees and bounds
           resources:
             requests:
               cpu: "250m"
@@ -49,7 +90,7 @@ spec:
             limits:
               cpu: "1000m"
               memory: "1Gi"
-          # Sonda de vivacidad: verifica si Uvicorn está activo sin deadlocks
+          # Liveness probe: verifies process liveness and detects deadlock conditions
           livenessProbe:
             httpGet:
               path: /healthz
@@ -58,7 +99,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-          # Sonda de disponibilidad: asegura que el modelo esté cargado en RAM
+          # Readiness probe: verifies ONNX model weights are initialized and ready to serve traffic
           readinessProbe:
             httpGet:
               path: /ready
@@ -67,6 +108,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 2
+          # Container-level security hardening
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false

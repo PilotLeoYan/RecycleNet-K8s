@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: recyclenet-config
+  labels:
+    app: recyclenet
+    component: config
+    tier: backend
+data:
+  # Primary HTTP serving port for the Python FastAPI microservice
+  PORT: "8000"
+  # High-performance HTTP serving port for the Rust Axum microservice
+  RUST_PORT: "8080"
+  # File system location of the exported ONNX model artifact
+  RECYCLENET_MODEL_PATH: "/app/models/recyclenet.onnx"
+  # Python standard library / Loguru logging level
+  LOG_LEVEL: "INFO"
+  # Rust tracing and env_logger filter directive
+  RUST_LOG: "info"
+  # Active MobileNetV3 model architecture variant
+  MODEL_VARIANT: "large"
+  # Dynamic shared library path for ONNX Runtime C-API
+  ORT_DYLIB_PATH: "/usr/lib/libonnxruntime.so"

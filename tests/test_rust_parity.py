@@ -37,7 +37,9 @@ DOCKERFILE_RUST = Path("Dockerfile.rust")
 MODEL_PATH = Path("models/recyclenet.onnx")
 CLASSES_MAPPING_PATH = Path("models/classes_mapping.json")
 
-WINDOWS_CARGO_PATH = r"C:\Users\laban\.cargo\bin;C:\Program Files\CodeBlocks\MinGW\bin"
+WINDOWS_CARGO_PATH = (
+    f"{Path.home() / '.cargo' / 'bin'};C:\\Program Files\\CodeBlocks\\MinGW\\bin"
+)
 
 
 def _get_free_port() -> int:

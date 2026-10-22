@@ -46,6 +46,7 @@ nav:
   - Overview: index.md
   - Architecture & MLOps: architecture.md
   - Serving Architecture: serving_architecture.md
+  - Kubernetes Orchestration: k8s_orchestration.md
   - API Reference:
       - Components: reference/components.md
       - Pipelines: reference/pipeline.md

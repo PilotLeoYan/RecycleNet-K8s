@@ -1,6 +1,7 @@
 # ==============================================================================
 # RecycleNet Multi-Stage Production Dockerfile
 # Optimized with Astral uv (Rust package manager) for minimal footprint and CVEs
+# Zero-trust security: unprivileged non-root execution (appuser, UID 10001)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -45,6 +46,10 @@ RUN mkdir -p /app/models && \
 # ------------------------------------------------------------------------------
 FROM python:3.14-slim-bookworm AS runtime
 
+LABEL org.opencontainers.image.title="RecycleNet FastAPI Inference Service" \
+      org.opencontainers.image.description="Production multi-stage Python ONNX Runtime inference container" \
+      org.opencontainers.image.vendor="RecycleNet-K8s"
+
 # System configurations
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -52,22 +57,22 @@ ENV PYTHONUNBUFFERED=1 \
     RECYCLENET_MODEL_PATH="/app/models/recyclenet.onnx" \
     PORT=8000
 
-# Create unprivileged system user for zero-trust security
-RUN groupadd -r recyclenet --gid 10001 && \
-    useradd -r -g recyclenet --uid 10001 --no-create-home --shell /bin/false recyclenet
+# Create unprivileged system user for zero-trust security (appuser, UID 10001)
+RUN groupadd -r appuser --gid 10001 && \
+    useradd -r -g appuser --uid 10001 --no-create-home --shell /bin/false appuser
 
 WORKDIR /app
 
 # Copy virtualenv and models from builder stage
-COPY --from=builder --chown=recyclenet:recyclenet /app/.venv /app/.venv
-COPY --from=builder --chown=recyclenet:recyclenet /app/models /app/models
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
+COPY --from=builder --chown=appuser:appuser /app/models /app/models
 
 # Copy application source code and configurations
-COPY --chown=recyclenet:recyclenet src/ /app/src/
-COPY --chown=recyclenet:recyclenet configs/ /app/configs/
+COPY --chown=appuser:appuser src/ /app/src/
+COPY --chown=appuser:appuser configs/ /app/configs/
 
 # Drop privileges to non-root user
-USER recyclenet
+USER appuser
 
 # Expose HTTP port
 EXPOSE 8000
