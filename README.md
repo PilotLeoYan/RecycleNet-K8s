@@ -2,7 +2,7 @@
 
 Waste classification (TrashNet, 6 classes) with an end-to-end MLOps pipeline.
 
-> **Status:** 🟢 Phase 1 (Training) & Phase 2 (Inference) done · 🟢 Phase 3 (Kubernetes) ready · 🟡 Phase 4 (CI/CD) in progress
+> **Status:** 🟢 Phase 1 (Training) & Phase 2 (Inference) done · 🟢 Phase 3 (Kubernetes) ready · 🟢 Phase 4 (CI/CD & GCP) done
 >
 > 🤗 **Model:** [LeoYan/recyclenet-mobilenetv3](https://huggingface.co/LeoYan/recyclenet-mobilenetv3)
 
@@ -10,7 +10,7 @@ Waste classification (TrashNet, 6 classes) with an end-to-end MLOps pipeline.
 
 ```mermaid
 flowchart LR
-    F1["✅ 1. Training<br/>HPO + ONNX"] --> F2["✅ 2. Inference<br/>FastAPI + Rust"] --> F3["✅ 3. Kubernetes<br/>Minikube + HPA"] --> F4["🟡 4. CI/CD<br/>GitHub Actions + GCP"]
+    F1["✅ 1. Training<br/>HPO + ONNX"] --> F2["✅ 2. Inference<br/>FastAPI + Rust"] --> F3["✅ 3. Kubernetes<br/>Minikube + HPA"] --> F4["✅ 4. CI/CD<br/>GitHub Actions + GCP"]
 ```
 
 ---
@@ -160,6 +160,47 @@ uv run python -m src.k8s.orchestrator
 
 ---
 
+# 🟢 Phase 4: Continuous DevSecOps & Cloud Deployment (GCP)
+
+Automated zero-trust CI/CD pipeline enforcing 5 quality and security gates, keyless Google Cloud authentication via Workload Identity Federation (OIDC), immutable container publishing to Google Artifact Registry, and serverless auto-scaling on Google Cloud Run.
+
+## Pipeline Architecture
+
+```mermaid
+flowchart LR
+    subgraph CI["Continuous Integration (GitHub Actions)"]
+        PR["Pull Request / Push"] --> UV["setup-uv"]
+        UV --> G1["Ruff"] --> G2["Mypy"] --> G3["Bandit"] --> G4["Pytest (80%+ cov)"]
+    end
+
+    subgraph CD["Continuous Deployment (GCP)"]
+        G4 --> OIDC["Keyless OIDC<br/>Workload Identity"]
+        OIDC --> GAR["Artifact Registry<br/>sha-${{ github.sha }}"]
+        GAR --> CR["Cloud Run<br/>1Gi RAM · 1 CPU<br/>1–5 instances"]
+    end
+```
+
+## Supply Chain Security & CVE Version Patches
+
+Transitive dependencies are hardened via `[tool.uv] override-dependencies` in `pyproject.toml` and locked in `uv.lock`, alongside CodeQL `CWE-020` URL/domain sanitization in OIDC claim verification:
+
+| Package | Patched Version | Security Remediation |
+| :--- | :---: | :--- |
+| `gitpython` | `3.1.62` → **`3.2.1`** | Fixes **High** RCE in submodule `.git` path validation prior to cloning |
+| `graphql-core` | `3.2.11` → **`3.2.13`** | Fixes two **High** DoS vulnerabilities in `max_tokens` parser & field validation |
+| `opentelemetry-api` | `1.44.0` → **`1.45.1`** | Fixes **Moderate** DoS in unbounded `tracestate` header parsing (`sdk` & `proto` synced) |
+| `cryptography` | **`>= 50.0.0`** | Enforces hardened OpenSSL bindings and X.509 primitives |
+
+## Offline Verification & DevSecOps CLI
+
+Verify CI quality gates, OIDC token claims exchange, and Cloud Run scaling rules offline:
+
+```bash
+uv run python -m src.devsecops.orchestrator
+```
+
+---
+
 ## Quickstart
 
 ```bash
@@ -181,12 +222,14 @@ Or step by step:
 ## Layout
 
 ```text
+.github/workflows/   CI/CD pipelines (ci.yaml, cd.yaml, codeql, dependency-review)
 configs/             YAML configs (config, smoke, best_hpo)
 k8s/                 Declarative manifests (Deployments, Service, HPA, Ingress, ConfigMap, Secret)
 rust_inference/      High-performance Rust microservice (Axum + ort)
 scripts/             Local lab automation scripts (k8s_local_lab.sh, k8s_local_lab.ps1)
 src/api/             FastAPI baseline inference microservice
 src/components/      data, model, train step, metrics, evals, MLflow logging
+src/devsecops/       DevSecOps CI/CD validator, GCP OIDC & Cloud Run simulator
 src/k8s/             Kubernetes declarative validation & HPA simulation engine
 src/pipeline/        train · hpo · export_onnx · super_train
 src/main.py          CLI (train | hpo | export | super-train)
@@ -196,4 +239,4 @@ tests/               unit & integration tests
 
 ## Stack
 
-PyTorch · Ray Train/Tune · Optuna · MLflow · ONNX Runtime · Rust (Axum) · Kubernetes (Minikube + HPA v2) · uv · ruff · mypy · pytest
+PyTorch · Ray Train/Tune · Optuna · MLflow · ONNX Runtime · Rust (Axum) · Kubernetes (Minikube + HPA v2) · GitHub Actions · GCP (OIDC + Artifact Registry + Cloud Run) · uv · ruff · mypy · bandit · pytest

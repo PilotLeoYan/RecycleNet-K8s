@@ -44,16 +44,22 @@ jobs:
         run: uv sync --frozen --all-groups --extra cpu
 
       - name: Check formatting (Ruff)
-        run: uv run ruff format --check .
+        run: uv run ruff format --check src tests
 
       - name: Lint code (Ruff)
-        run: uv run ruff check .
+        run: uv run ruff check src tests
 
-      - name: Type check (Mypy)
-        run: uv run mypy .
+      - name: Static type check (Mypy)
+        run: uv run mypy src tests
 
-      - name: Run Bandit (Security Linter)
-        run: uv run bandit -r src/ -c pyproject.toml
+      - name: Security SAST scan (Bandit)
+        run: uv run bandit -c pyproject.toml -r src
 
-      - name: Run unit tests (Pytest)
-        run: uv run pytest tests/ -v --durations=10
+      - name: Validate Kubernetes manifests & HPA autoscaling
+        run: uv run python -m src.k8s.orchestrator
+
+      - name: Validate DevSecOps workflows & GCP cloud deployment
+        run: uv run python -m src.devsecops.orchestrator
+
+      - name: Run tests & coverage (Pytest)
+        run: uv run pytest tests/ -v --cov=src --cov-fail-under=80 --durations=10

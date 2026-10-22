@@ -37,9 +37,13 @@ DOCKERFILE_RUST = Path("Dockerfile.rust")
 MODEL_PATH = Path("models/recyclenet.onnx")
 CLASSES_MAPPING_PATH = Path("models/classes_mapping.json")
 
-WINDOWS_CARGO_PATH = (
-    f"{Path.home() / '.cargo' / 'bin'};C:\\Program Files\\CodeBlocks\\MinGW\\bin"
-)
+
+def _get_cargo_bin_dir() -> Path:
+    """Resolve the standard Rust cargo binary directory without hardcoded OS paths."""
+    cargo_home = os.environ.get("CARGO_HOME")
+    if cargo_home:
+        return Path(cargo_home) / "bin"
+    return Path.home() / ".cargo" / "bin"
 
 
 def _get_free_port() -> int:
@@ -50,14 +54,11 @@ def _get_free_port() -> int:
 
 
 def _is_cargo_available() -> bool:
-    """Check if cargo is available in system PATH or standard Windows location."""
+    """Check if cargo is available in system PATH or standard CARGO_HOME."""
     if shutil.which("cargo") is not None:
         return True
-    if os.name == "nt":
-        for dir_str in WINDOWS_CARGO_PATH.split(";"):
-            if (Path(dir_str) / "cargo.exe").exists():
-                return True
-    return False
+    cargo_exe = "cargo.exe" if os.name == "nt" else "cargo"
+    return (_get_cargo_bin_dir() / cargo_exe).exists()
 
 
 def _resolve_ort_dylib() -> str | None:
@@ -110,8 +111,9 @@ def _resolve_rust_binary() -> Path:
         pytest.skip("Cargo toolchain not available")
 
     env = os.environ.copy()
-    if os.name == "nt":
-        env["PATH"] = f"{WINDOWS_CARGO_PATH};{env.get('PATH', '')}"
+    cargo_bin = _get_cargo_bin_dir()
+    if cargo_bin.exists():
+        env["PATH"] = f"{cargo_bin}{os.pathsep}{env.get('PATH', '')}"
 
     dylib = _resolve_ort_dylib()
     if dylib:
@@ -167,8 +169,9 @@ def rust_server(onnx_model_path: Path) -> Generator[str]:
     env = os.environ.copy()
     env["PORT"] = str(port)
     env["RECYCLENET_MODEL_PATH"] = str(onnx_model_path.resolve())
-    if os.name == "nt":
-        env["PATH"] = f"{WINDOWS_CARGO_PATH};{env.get('PATH', '')}"
+    cargo_bin = _get_cargo_bin_dir()
+    if cargo_bin.exists():
+        env["PATH"] = f"{cargo_bin}{os.pathsep}{env.get('PATH', '')}"
 
     dylib = _resolve_ort_dylib()
     if dylib:
@@ -353,8 +356,9 @@ class TestPreprocessingParity:
 
         env = os.environ.copy()
         env["RECYCLENET_MODEL_PATH"] = str(onnx_model_path.resolve())
-        if os.name == "nt":
-            env["PATH"] = f"{WINDOWS_CARGO_PATH};{env.get('PATH', '')}"
+        cargo_bin = _get_cargo_bin_dir()
+        if cargo_bin.exists():
+            env["PATH"] = f"{cargo_bin}{os.pathsep}{env.get('PATH', '')}"
 
         dylib = _resolve_ort_dylib()
         if dylib:

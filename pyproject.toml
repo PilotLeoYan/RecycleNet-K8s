@@ -42,7 +42,9 @@ gpu = [
 package = false
 override-dependencies = [
     "cryptography>=50.0.0",
-    "gitpython>=3.1.60",
+    "gitpython>=3.2.1",
+    "graphql-core>=3.2.12",
+    "opentelemetry-api>=1.45.1",
 ]
 conflicts = [
     [
@@ -82,6 +84,7 @@ dev = [
     "bandit>=1.9.4",
     "python-lsp-server[all]>=1.15.0",
     "httpx>=0.27.0",
+    "pytest-cov>=6.0.0",
 ]
 docs = [
     "mkdocs>=1.6.1",
@@ -129,3 +132,16 @@ exclude_dirs = [
 
 # Rules to skip
 skips = ["B101", "B311"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/main.py",
+    "src/__main__.py",
+    "src/pipeline/ray_resources.py",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+precision = 2

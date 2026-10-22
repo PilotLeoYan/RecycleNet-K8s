@@ -12,6 +12,8 @@
 * **MLflow Tracking**: Automatic logging of hyperparameters, per-epoch metrics, evaluation artifacts, and registered models.
 * **Production-Grade Logging**: Dual-mode logging (ANSI colorized console locally, structured JSON for Google Cloud Logging).
 * **Strict Type Safety**: 100% type annotations verified with `mypy` and linted with `ruff`.
+* **Cloud-Native Kubernetes**: Declarative manifests with zero-trust container security, Burstable QoS, and HPA v2 autoscaling.
+* **Continuous DevSecOps**: GitHub Actions CI with 5 automated gates and CD to Google Cloud Run via keyless OIDC Workload Identity Federation.
 
 ---
 
@@ -43,4 +45,14 @@ Launch the local MLflow dashboard to explore metrics and artifacts:
 
 ```bash
 uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+---
+
+## 🛡️ DevSecOps & Cloud Deployment
+
+Verify CI quality gates and cloud deployment rules offline:
+
+```bash
+uv run python -m src.devsecops.orchestrator
 ```

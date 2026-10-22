@@ -1,4 +1,4 @@
-.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test smoke-export train train-best hpo export super-train mlflow api format lint test check
+.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test smoke-export train train-best hpo export super-train mlflow api format lint test security devsecops check
 
 CONFIG ?= configs/config.yaml
 EXTRA_ARGS ?=
@@ -63,7 +63,13 @@ lint:
 	uv run mypy .
 
 test:
-	uv run pytest
+	uv run pytest tests/ --cov=src --cov-fail-under=80
+
+security:
+	uv run bandit -c pyproject.toml -r src
+
+devsecops:
+	uv run python -m src.devsecops.orchestrator
 
 check:
 	uv run pre-commit run --all-files
