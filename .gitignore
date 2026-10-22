@@ -17,6 +17,8 @@ trashnet/
 data/
 models/
 logs/
+target/
+rust_inference/target/
 
 # mlflow
 mlruns/
