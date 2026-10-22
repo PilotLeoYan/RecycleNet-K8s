@@ -67,7 +67,7 @@ flowchart TD
 
     MetricsServer -.->|Poll cgroups v2 CPU/Mem| PyPod1 & PyPod2 & PyPodN
     HPA -->|Query Metrics| MetricsServer
-    HPA -->|Scale Replicas (scaleTargetRef)| PythonTier
+    HPA -->|"Scale Replicas (scaleTargetRef)"| PythonTier
 ```
 
 ### Declarative Manifest Inventory

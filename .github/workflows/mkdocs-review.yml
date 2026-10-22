@@ -32,5 +32,31 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups
 
-      - name: Deploy documentation
+      - name: Build documentation (strict check)
         run: uv run mkdocs build --strict
+
+      # pymdownx.superfences must keep converting ```mermaid fences into
+      # <pre class="mermaid"> blocks, otherwise Material renders them as plain
+      # code blocks and the diagrams silently disappear from the published site.
+      - name: Verify Mermaid fences are rendered as diagrams
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          fences = sum(
+              len(re.findall(r"^```mermaid\b", page.read_text(encoding="utf-8"), re.MULTILINE))
+              for page in pathlib.Path("docs").rglob("*.md")
+          )
+          rendered = 0
+          for page in pathlib.Path("site").rglob("*.html"):
+              html = page.read_text(encoding="utf-8", errors="ignore")
+              if 'class="language-mermaid"' in html:
+                  sys.exit(f"Mermaid fence rendered as a code block: {page}")
+              rendered += html.count('class="mermaid"')
+
+          print(f"Mermaid fences in docs: {fences}; diagram blocks in site: {rendered}")
+          if rendered < fences:
+              sys.exit("Some Mermaid fences were not rendered as diagrams")
+          PY
