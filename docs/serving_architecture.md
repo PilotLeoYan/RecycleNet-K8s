@@ -34,7 +34,7 @@ flowchart TD
     end
 
     PythonFastAPI -->|Load & Forward| ONNXModel
-    RustAxum -->|Load & Forward (Zero-Copy)| ONNXModel
+    RustAxum -->|"Load & Forward (Zero-Copy)"| ONNXModel
 ```
 
 ### Dual Serving Topology Comparison

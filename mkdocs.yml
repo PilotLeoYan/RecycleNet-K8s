@@ -42,6 +42,15 @@ plugins:
             show_category_heading: true
             merge_init_into_class: true # Displays the __init__ parameters in the class header
 
+markdown_extensions:
+  # Material for MkDocs renders ```mermaid fences as diagrams only when the
+  # fence is converted to <pre class="mermaid"> by this custom fence handler.
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
 nav:
   - Overview: index.md
   - Architecture & MLOps: architecture.md
