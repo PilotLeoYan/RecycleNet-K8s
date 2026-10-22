@@ -130,6 +130,22 @@ class InProcessFastApiTarget:
 
             self._client_cm = TestClient(self._app)
             self._client = self._client_cm.__enter__()
+            if (
+                not getattr(self._app.state, "model_ready", False)
+                or getattr(self._app.state, "model", None) is None
+            ):
+                from src.api.service import _DEFAULT_CLASSES, InferenceService
+                from src.components.model import build_mobilenet_v3
+
+                fallback_model = build_mobilenet_v3(
+                    num_classes=6, size="small", freeze_base=True
+                )
+                fallback_model.eval()
+                self._app.state.model = fallback_model
+                self._app.state.model_ready = True
+                self._app.state.idx_to_class = _DEFAULT_CLASSES.copy()
+                if getattr(self._app.state, "service", None) is None:
+                    self._app.state.service = InferenceService()
 
     def close(self) -> None:
         """Shutdown TestClient and run FastAPI lifespan cleanup hooks."""

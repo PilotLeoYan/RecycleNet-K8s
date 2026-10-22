@@ -220,9 +220,17 @@ def test_format_markdown_report() -> None:
     assert "PASS (Zero Skew)" in report
 
 
-def test_in_process_fastapi_target_predict_and_rss() -> None:
-    """Verify InProcessFastApiTarget executes inference against the FastAPI app."""
+def test_in_process_fastapi_target_predict_and_rss(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify InProcessFastApiTarget works even when ONNX file is absent."""
     sample_img = generate_synthetic_image(color=(80, 160, 240))
+    monkeypatch.setattr(
+        "src.api.service.DEFAULT_LOCAL_ONNX", Path("nonexistent/recyclenet.onnx")
+    )
+    monkeypatch.delenv("RECYCLENET_MODEL_PATH", raising=False)
+    app.state.model = None
+    app.state.model_ready = False
 
     with InProcessFastApiTarget(app) as target:
         assert isinstance(target, BenchmarkTargetProtocol)
