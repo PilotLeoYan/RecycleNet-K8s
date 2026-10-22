@@ -18,7 +18,7 @@ Derived from Google's internal cluster management system (**Borg**), **Kubernete
 
 ## 2. Declarative Architecture & Cluster Topology
 
-The RecycleNet Kubernetes infrastructure adopts a declarative, GitOps-ready layout organized under [`k8s/`](file:///c:/Users/laban/RecycleNet-K8s/k8s).
+The RecycleNet Kubernetes infrastructure adopts a declarative, GitOps-ready layout organized under `k8s/`.
 
 ```mermaid
 flowchart TD
@@ -74,14 +74,14 @@ flowchart TD
 
 | Manifest File | API Version & Kind | Primary Role & Governance |
 | :--- | :--- | :--- |
-| [`k8s/kustomization.yaml`](file:///c:/Users/laban/RecycleNet-K8s/k8s/kustomization.yaml) | `kustomize.config.k8s.io/v1beta1` | Root deployment order orchestration: Config -> Workloads -> Networking -> Autoscaler. |
-| [`k8s/configmap.yaml`](file:///c:/Users/laban/RecycleNet-K8s/k8s/configmap.yaml) | `v1/ConfigMap` | Non-sensitive runtime variables: ports (`8000`, `8080`), ONNX model path, logging levels. |
-| [`k8s/secret.yaml`](file:///c:/Users/laban/RecycleNet-K8s/k8s/secret.yaml) | `v1/Secret` | Base64-encoded authentication tokens, telemetry shared keys, and self-signed TLS certs. |
-| [`k8s/deployment.yaml`](file:///c:/Users/laban/RecycleNet-K8s/k8s/deployment.yaml) | `apps/v1/Deployment` | Baseline Python FastAPI workload (2 replicas, non-root UID 10001, Burstable QoS, probes). |
-| [`k8s/deployment-rust.yaml`](file:///c:/Users/laban/RecycleNet-K8s/k8s/deployment-rust.yaml) | `apps/v1/Deployment` | High-performance Rust edge workload (2 replicas, 64Mi requests, sub-millisecond execution). |
-| [`k8s/service.yaml`](file:///c:/Users/laban/RecycleNet-K8s/k8s/service.yaml) | `v1/Service` | Internal `ClusterIP` virtual IP router exposing port `8000` (Python) and port `8080` (Rust). |
-| [`k8s/hpa.yaml`](file:///c:/Users/laban/RecycleNet-K8s/k8s/hpa.yaml) | `autoscaling/v2/HorizontalPodAutoscaler` | Dynamic closed-loop autoscaler scaling Python replicas from 2 to 5 based on 70% CPU. |
-| [`k8s/ingress.yaml`](file:///c:/Users/laban/RecycleNet-K8s/k8s/ingress.yaml) | `networking.k8s.io/v1/Ingress` | NGINX-based layer-7 reverse proxy with TLS termination and upload size buffers (20m). |
+| `k8s/kustomization.yaml` | `kustomize.config.k8s.io/v1beta1` | Root deployment order orchestration: Config -> Workloads -> Networking -> Autoscaler. |
+| `k8s/configmap.yaml` | `v1/ConfigMap` | Non-sensitive runtime variables: ports (`8000`, `8080`), ONNX model path, logging levels. |
+| `k8s/secret.yaml` | `v1/Secret` | Base64-encoded authentication tokens, telemetry shared keys, and self-signed TLS certs. |
+| `k8s/deployment.yaml` | `apps/v1/Deployment` | Baseline Python FastAPI workload (2 replicas, non-root UID 10001, Burstable QoS, probes). |
+| `k8s/deployment-rust.yaml` | `apps/v1/Deployment` | High-performance Rust edge workload (2 replicas, 64Mi requests, sub-millisecond execution). |
+| `k8s/service.yaml` | `v1/Service` | Internal `ClusterIP` virtual IP router exposing port `8000` (Python) and port `8080` (Rust). |
+| `k8s/hpa.yaml` | `autoscaling/v2/HorizontalPodAutoscaler` | Dynamic closed-loop autoscaler scaling Python replicas from 2 to 5 based on 70% CPU. |
+| `k8s/ingress.yaml` | `networking.k8s.io/v1/Ingress` | NGINX-based layer-7 reverse proxy with TLS termination and upload size buffers (20m). |
 
 ---
 
@@ -89,11 +89,11 @@ flowchart TD
 
 To minimize image bloat, eliminate build tools from runtime environments, and eliminate Common Vulnerabilities and Exposures (CVEs), both Python and Rust tiers utilize multi-stage Docker builds.
 
-### Python Container Architecture ([`Dockerfile`](file:///c:/Users/laban/RecycleNet-K8s/Dockerfile))
+### Python Container Architecture (`Dockerfile`)
 - **Stage 1 (Builder):** Uses `python:3.14-slim-bookworm` with Astral `uv` copied from `ghcr.io/astral-sh/uv:latest`. Compiles deterministic dependencies with bytecode compilation (`UV_COMPILE_BYTECODE=1`) and cache mounts (`--mount=type=cache,target=/root/.cache/uv`), downloading the MobileNetV3 ONNX model weights directly from Hugging Face.
 - **Stage 2 (Runtime):** Minimal `python:3.14-slim-bookworm` runtime containing only the compiled virtual environment (`/app/.venv`) and model artifacts.
 
-### Rust Container Architecture ([`Dockerfile.rust`](file:///c:/Users/laban/RecycleNet-K8s/Dockerfile.rust))
+### Rust Container Architecture (`Dockerfile.rust`)
 - **Stage 1 (Builder):** Uses `rust:1.85-slim-bookworm`, downloads the Microsoft ONNX Runtime C dynamic shared library (`libonnxruntime.so.1.20.1`), compiles the optimized release binary via `cargo build --release`, and downloads ONNX weights.
 - **Stage 2 (Runtime):** Lightweight `debian:bookworm-slim` containing only the shared libraries, CA certificates, and the single static binary (`/app/rust_inference`).
 
@@ -391,7 +391,7 @@ kubectl get pods -l app=recyclenet -w
 
 To automate the 5 steps into a single reproducible command, RecycleNet provides automated scripts for both POSIX and Windows environments:
 
-### Linux / macOS / WSL2 ([`scripts/k8s_local_lab.sh`](file:///c:/Users/laban/RecycleNet-K8s/scripts/k8s_local_lab.sh))
+### Linux / macOS / WSL2 (`scripts/k8s_local_lab.sh`)
 
 ```bash
 # Preview all commands without running Minikube (Dry-Run mode)
@@ -409,7 +409,7 @@ To automate the 5 steps into a single reproducible command, RecycleNet provides 
 ./scripts/k8s_local_lab.sh clean    # Resource teardown
 ```
 
-### Windows PowerShell ([`scripts/k8s_local_lab.ps1`](file:///c:/Users/laban/RecycleNet-K8s/scripts/k8s_local_lab.ps1))
+### Windows PowerShell (`scripts/k8s_local_lab.ps1`)
 
 ```powershell
 # Preview all commands without running Minikube (Dry-Run mode)
