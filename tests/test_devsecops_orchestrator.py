@@ -429,6 +429,20 @@ def test_gcp_oidc_workload_identity_simulator() -> None:
     assert invalid_check.is_valid is False
     assert len(invalid_check.violations) == 5
 
+    # Spoofed URL / domain substring attacks (CodeQL CWE-020 regression test)
+    spoofed_claims: dict[str, Any] = {
+        "iss": "https://token.actions.githubusercontent.com",
+        "aud": "https://iam.googleapis.com.attacker.com/projects/123",
+        "repository": "PilotLeoYan/RecycleNet-K8s",
+        "ref": "refs/heads/main",
+        "service_account": "deployer@proj.iam.gserviceaccount.com.attacker.com",
+    }
+    spoofed_check = sim.validate_claims(spoofed_claims)
+    assert spoofed_check.is_valid is False
+    assert len(spoofed_check.violations) == 2
+    assert any("Invalid OIDC audience" in v for v in spoofed_check.violations)
+    assert any("Invalid GCP service account" in v for v in spoofed_check.violations)
+
     # Exchange steps
     steps = sim.simulate_exchange()
     assert len(steps) == 4

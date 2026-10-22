@@ -13,6 +13,7 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
+from urllib.parse import urlparse
 
 import yaml
 
@@ -679,16 +680,22 @@ class GcpOidcWorkloadIdentitySimulator:
                 "'https://token.actions.githubusercontent.com'."
             )
 
-        if not audience.startswith("https://iam.googleapis.com"):
+        parsed_audience = urlparse(audience)
+        if (
+            parsed_audience.scheme != "https"
+            or parsed_audience.hostname != "iam.googleapis.com"
+            or not parsed_audience.path.startswith("/projects/")
+        ):
             violations.append(
                 f"Invalid OIDC audience: '{audience}'. Must target Google Cloud STS "
-                "('https://iam.googleapis.com')."
+                "('https://iam.googleapis.com/projects/...')."
             )
 
-        if not repository or not repository.endswith("RecycleNet-K8s"):
+        repo_owner, repo_sep, repo_name = repository.partition("/")
+        if not repo_owner or repo_sep != "/" or repo_name != "RecycleNet-K8s":
             violations.append(
                 f"Untrusted GitHub repository in claim: '{repository}'. "
-                "Expected repository ending with 'RecycleNet-K8s'."
+                "Expected '<owner>/RecycleNet-K8s'."
             )
 
         if ref != "refs/heads/main":
@@ -697,8 +704,17 @@ class GcpOidcWorkloadIdentitySimulator:
                 "to 'refs/heads/main'."
             )
 
+        sa_local, sa_sep, sa_domain = sa.partition("@")
+        sa_domain_parts = sa_domain.split(".")
         is_sa_valid = (
-            sa.endswith(".iam.gserviceaccount.com") or "gserviceaccount.com" in sa
+            bool(sa_local)
+            and sa_sep == "@"
+            and "@" not in sa_domain
+            and "/" not in sa
+            and ":" not in sa
+            and len(sa_domain_parts) == 4
+            and bool(sa_domain_parts[0])
+            and sa_domain_parts[1:] == ["iam", "gserviceaccount", "com"]
         )
         if not is_sa_valid:
             violations.append(
