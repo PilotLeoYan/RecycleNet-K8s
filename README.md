@@ -1,158 +1,143 @@
+<div align="center">
+
 # ♻️ RecycleNet-K8s
 
-Waste classification (TrashNet, 6 classes) with an end-to-end MLOps pipeline.
+**Production-grade MLOps for waste classification — from distributed hyperparameter search to a Rust + ONNX edge runtime, orchestrated on Kubernetes.**
 
-> **Status:** 🟢 Phase 1 (Training) & Phase 2 (Inference) done · 🟢 Phase 3 (Kubernetes) ready · 🟢 Phase 4 (CI/CD & GCP) done
->
-> 🤗 **Model:** [LeoYan/recyclenet-mobilenetv3](https://huggingface.co/LeoYan/recyclenet-mobilenetv3)
+[![CI](https://github.com/PilotLeoYan/RecycleNet-K8s/actions/workflows/ci.yaml/badge.svg)](https://github.com/PilotLeoYan/RecycleNet-K8s/actions/workflows/ci.yaml) [![CD](https://github.com/PilotLeoYan/RecycleNet-K8s/actions/workflows/cd.yaml/badge.svg)](https://github.com/PilotLeoYan/RecycleNet-K8s/actions/workflows/cd.yaml) [![CodeQL](https://github.com/PilotLeoYan/RecycleNet-K8s/actions/workflows/codeql.yml/badge.svg)](https://github.com/PilotLeoYan/RecycleNet-K8s/actions/workflows/codeql.yml) [![Docs](https://github.com/PilotLeoYan/RecycleNet-K8s/actions/workflows/docs.yml/badge.svg)](https://pilotleoyan.github.io/RecycleNet-K8s/)
 
-## 🗺️ Roadmap
+[![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/) [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/) [![ONNX Runtime](https://img.shields.io/badge/ONNX-opset%2018-005CED?logo=onnx&logoColor=white)](https://onnxruntime.ai/) [![Kubernetes](https://img.shields.io/badge/Kubernetes-Minikube%20%C2%B7%20HPA%20v2-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/) [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Model-LeoYan%2Frecyclenet--mobilenetv3-yellow)](https://huggingface.co/LeoYan/recyclenet-mobilenetv3) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-```mermaid
-flowchart LR
-    F1["✅ 1. Training<br/>HPO + ONNX"] --> F2["✅ 2. Inference<br/>FastAPI + Rust"] --> F3["✅ 3. Kubernetes<br/>Minikube + HPA"] --> F4["✅ 4. CI/CD<br/>GitHub Actions + GCP"]
-```
+[Quickstart](#quickstart) · [Results](#results) · [Documentation](#documentation) · [🤗 Model Card](https://huggingface.co/LeoYan/recyclenet-mobilenetv3)
 
----
-
-# 🟢 Phase 1: Training
+</div>
 
 ## Overview
 
-```mermaid
-flowchart LR
-    D[("TrashNet<br/>zip")] --> I[Ingestion<br/>+ split 70/15/15]
-    I --> H["HPO<br/>Ray Tune + ASHA"]
-    H -- "best_hpo_config.yaml" --> T["Training<br/>Ray Train"]
-    T --> E["Test eval<br/>Acc · F1 · ROC-AUC"]
-    T --> M[("MLflow<br/>sqlite")]
-    H --> M
-    M --> X["ONNX export<br/>+ parity check"]
-    X --> O[["models/recyclenet.onnx"]]
+RecycleNet classifies municipal waste into six streams — **cardboard, glass, metal, paper, plastic and trash** — with transfer learning on MobileNetV3 over the TrashNet dataset (2,527 images, 70/15/15 split).
+
+The repository is a reproducible MLOps reference implementation: deterministic seeding, Ray Tune HPO with ASHA pruning, MLflow tracking, ONNX export with numerical-parity checks, dual Python/Rust inference tiers, hardened containers, a local Minikube HPA lab, and keyless CI/CD to Google Cloud Run.
+
+| Phase | Scope | Core technologies | Status |
+| :--- | :--- | :--- | :---: |
+| **1 · Training** | Ingestion → HPO → training → ONNX export | PyTorch, Ray Train/Tune, Optuna, MLflow | ✅ |
+| **2 · Inference** | Dual serving tiers + scientific benchmarking | FastAPI, ONNX Runtime, Rust (Axum + ort), k6 | ✅ |
+| **3 · Kubernetes** | Declarative orchestration + local HPA lab | Minikube, Kustomize, HPA v2, probes | ✅ |
+| **4 · DevSecOps** | Quality gates, SAST, keyless cloud delivery | GitHub Actions, CodeQL, GCP OIDC, Cloud Run | ✅ |
+
+## Quickstart
+
+```bash
+git clone https://github.com/PilotLeoYan/RecycleNet-K8s.git
+cd RecycleNet-K8s
+
+make sync-cpu     # or: make sync-gpu
+make super-train  # HPO → retrain best config → ONNX export
+make mlflow       # UI at http://localhost:5000
 ```
 
-## Model
-
-```mermaid
-flowchart LR
-    IMG["Image<br/>3×224×224"] --> B["MobileNetV3-Small<br/>ImageNet weights<br/>❄️ frozen"]
-    B --> C["Linear → 6 classes<br/>🔥 trainable"]
-    C --> P["Logits"]
-```
-
-Transfer learning: only the last classifier layer is trained.
-
-## Training loop
-
-```mermaid
-flowchart LR
-    A[Epoch] --> B["Train step<br/>CrossEntropy + AdamW"]
-    B --> C[Validate]
-    C --> D{"valid_loss<br/>improved?"}
-    D -- yes --> E["Save checkpoint<br/>→ MLflow"]
-    D -- "no (patience = 7)" --> F["Early stop"]
-    E --> A
-    C -.-> G["LR scheduler<br/>cosine / plateau"]
-```
-
-## Hyperparameter search (HPO)
-
-```mermaid
-flowchart TB
-    S["Search space<br/>lr: loguniform 1e-4…1e-2<br/>weight decay: loguniform 1e-4…1e-1<br/>batch: 16 / 32 / 64"] --> O["Optuna sampler<br/>20 trials"]
-    O --> R["Ray Tune<br/>2 concurrent trials"]
-    R --> A{"ASHA<br/>grace = 3 · max = 8 epochs<br/>reduction = 2"}
-    A -- "promising" --> K[Keep training]
-    A -- "bad" --> X[Prune ✂️]
-    K --> BEST["Best trial<br/>min valid_loss"]
-    BEST --> Y[("configs/<br/>best_hpo_config.yaml")]
-    R -. "every trial" .-> ML[("MLflow")]
-```
-
-## ONNX export
-
-```mermaid
-flowchart LR
-    R[("MLflow registry<br/>or checkpoint")] --> L[Load PyTorch model]
-    L --> X["torch.onnx.export<br/>opset 18 · dynamic batch"]
-    X --> C["onnx.checker"]
-    C --> P{"max|torch − onnx|<br/>&lt; 1e-5 ?"}
-    P -- yes --> OK[["✅ recyclenet.onnx"]]
-    P -- no --> ERR["❌ fail"]
-```
-
-## Results
-
-| Test accuracy | F1 (macro) | ROC-AUC (OvR) |
-| :-: | :-: | :-: |
-| 0.781 | 0.749 | 0.947 |
-
-*Source: [`models/model_card.json`](models/model_card.json).*
-
-🤗 **Trained model:** [LeoYan/recyclenet-mobilenetv3](https://huggingface.co/LeoYan/recyclenet-mobilenetv3)
+**Prerequisites:** [uv](https://docs.astral.sh/uv/) and GNU Make. The training pipeline expects the TrashNet archive at `trashnet/dataset-original.zip` (configurable in `configs/config.yaml`). Docker, Rust, Minikube and k6 are only needed to run Phases 2 and 3.
 
 ---
 
-# 🟢 Phase 3: Cloud-Native Kubernetes Orchestration & Local HPA Lab
-
-Production-grade declarative orchestration with zero-trust container security, high availability, and dynamic horizontal pod autoscaling tested locally on Minikube with zero cloud cost.
-
-## Manifest Architecture
+## Phase 1 — Training, HPO & ONNX Export
 
 ```mermaid
-flowchart TD
-    Client["Client / Edge Device"] -->|HTTPS :443| Ingress["Ingress (NGINX)<br/>recyclenet-ingress"]
-    Ingress --> Service["Service (ClusterIP)<br/>recyclenet-service"]
-    Service -->|:8000| PyPods["Python API (2 Replicas)<br/>recyclenet-deployment<br/>QoS: Burstable (512Mi/1Gi)"]
-    Service -->|:8080| RustPods["Rust API (2 Replicas)<br/>recyclenet-rust-deployment<br/>QoS: Burstable (64Mi/128Mi)"]
-    ConfigMap[("ConfigMap<br/>recyclenet-config")] -.-> PyPods & RustPods
-    Secret[("Secret<br/>recyclenet-secret")] -.-> PyPods & RustPods
-    HPA["HPA v2<br/>2–5 replicas @ 70% CPU"] -->|Scales| PyPods
-    MetricsServer["Metrics Server"] -.->|Scrapes| HPA
+flowchart LR
+    subgraph DATA["Data"]
+        direction TB
+        RAW[("TrashNet zip")] --> ING["Ingestion<br/>70/15/15 split"]
+        ING --> TF["Transforms<br/>ImageNet normalization"]
+        TF --> TL["Transfer learning<br/>MobileNetV3 Small / Large"]
+    end
+    subgraph MODEL["Train & ship"]
+        direction TB
+        HPO["Ray Tune HPO<br/>Optuna + ASHA"] --> TR["Final training<br/>Ray Train"]
+        TR --> EVAL["Test evaluation<br/>Accuracy · F1 · ROC-AUC"]
+        EVAL --> ONNX["ONNX export<br/>opset 18 · parity < 1e-5"]
+    end
+    TL --> HPO
+    HPO & TR & EVAL -.-> ML[("MLflow<br/>sqlite:///mlflow.db")]
 ```
 
-## Minikube Local Lab Commands
-
-Run the automated 5-step lab workflow using the cross-platform automation scripts:
+### Usage
 
 ```bash
-# Linux / macOS / WSL2 / Git Bash:
-./scripts/k8s_local_lab.sh --dry-run all   # Preview without cluster
-./scripts/k8s_local_lab.sh all            # Execute complete 5-step lab
+make train        # baseline run with configs/config.yaml
+make hpo          # Ray Tune search → configs/best_hpo_config.yaml
+make train-best   # retrain using the best HPO configuration
+make export       # ONNX export + numerical parity check
+make mlflow       # inspect runs, metrics and artifacts
+```
 
-# Windows PowerShell:
-.\scripts\k8s_local_lab.ps1 -DryRun -Action all
+Use `CONFIG=configs/smoke.yaml` for a 3-epoch CPU smoke run (e.g. `make train CONFIG=configs/smoke.yaml`) and `EXTRA_ARGS` to forward CLI flags. The ImageNet backbone stays frozen by default; only the 6-class head is optimized. HPO sweeps learning rate (1e-4–1e-2, log), weight decay (1e-4–1e-1, log) and batch size (16/32/64) across 20 trials, pruned with ASHA (grace 3, max 8 epochs); final training uses AdamW, a cosine schedule with warmup, and early stopping (patience 7).
+
+---
+
+## Phase 2 — Dual Inference & Benchmarking
+
+```mermaid
+flowchart LR
+    MODEL[("recyclenet.onnx")] --> PY["Python tier<br/>FastAPI + onnxruntime<br/>:8000"]
+    MODEL --> RS["Rust tier<br/>Axum + ort<br/>:8080"]
+    PY --> BENCH["Benchmark harness<br/>p50 · p95 · p99 · RPS · RSS"]
+    RS --> BENCH
+    BENCH --> SLO["k6 SLOs<br/>p95 < 300 ms · p99 < 600 ms · errors < 1%"]
+```
+
+### Usage
+
+```bash
+make api                                                         # Python tier on :8000
+cargo run --release --manifest-path rust_inference/Cargo.toml    # Rust tier on :8080
+uv run python benchmarks/benchmark_suite.py --requests 50        # latency, RSS and parity report
+k6 run -e TARGET_URL=http://localhost:8000 benchmarks/k6_load_test.js
+k6 run -e TARGET_URL=http://localhost:8080 benchmarks/k6_load_test.js
+```
+
+Both tiers load the artifact produced by `make export` in Phase 1. They expose the same contract: `GET /health`, `/healthz`, `/ready`, `/info` and `POST /predict` (multipart file or base64 image, with optional GPS telemetry). The Rust engine preprocesses with `image` + `ndarray` and loads the graph through `ort`, keeping outputs within `1e-5` of the PyTorch reference.
+
+---
+
+## Phase 3 — Kubernetes Orchestration & Local HPA Lab
+
+```mermaid
+flowchart TB
+    CLIENT["Client / edge bin"] --> ING["Ingress · recyclenet-ingress"]
+    ING --> SVC["Service ClusterIP<br/>:8000 Python · :8080 Rust"]
+    SVC --> PY["Python deployment<br/>2 replicas · 512Mi → 1Gi"]
+    SVC --> RUST["Rust deployment<br/>2 replicas · 64Mi → 128Mi"]
+    MS["metrics-server"] --> HPA["HPA v2<br/>2 → 5 pods @ 70% CPU"]
+    HPA -.-> PY
+    CFG[("ConfigMap + Secret")] -.-> PY
+    CFG -.-> RUST
+    K6["k6 stress load"] --> SVC
+```
+
+### Usage
+
+```bash
+./scripts/k8s_local_lab.sh --dry-run all   # preview all 5 steps, no cluster required
+./scripts/k8s_local_lab.sh all             # start → metrics → build → deploy → stress
+./scripts/k8s_local_lab.sh status          # pods, services, HPA, resource usage
+
+# Windows PowerShell
 .\scripts\k8s_local_lab.ps1 -Action all
 ```
 
-Or execute the 5 steps manually:
+Or run the lab manually:
 
 ```bash
-# 1. Start local cluster
 minikube start --driver=docker --cpus=4 --memory=4096
-
-# 2. Enable metrics server for HPA
 minikube addons enable metrics-server
-
-# 3. Build container images inside Minikube Docker daemon
 eval $(minikube docker-env)
 docker build -t recyclenet-api:local .
 docker build -f Dockerfile.rust -t recyclenet-rust:local .
-
-# 4. Deploy declarative manifests & await rollout
 kubectl apply -k k8s/
-kubectl rollout status deployment/recyclenet-deployment --timeout=120s
-kubectl rollout status deployment/recyclenet-rust-deployment --timeout=120s
-
-# 5. Live HPA Autoscaling stress test
-kubectl port-forward svc/recyclenet-service 8000:8000 8080:8080 &
-k6 run -e TARGET_URL=http://localhost:8000 benchmarks/k6_load_test.js
 kubectl get hpa recyclenet-hpa -w
 ```
 
-## Offline Simulation & Manifest Validation
-
-Verify manifest schemas, Burstable QoS calculations, and HPA control loop dynamics without requiring Minikube or Docker:
+Manifests enforce non-root execution (UID 10001), liveness/readiness probes, rolling updates, Burstable QoS and PodAntiAffinity. The HPA scales the Python deployment from 2 to 5 pods at 70% CPU, adding up to 100% (or 2 pods) every 15s and applying a 60s stabilization window before scaling down. Validate everything offline with:
 
 ```bash
 uv run python -m src.k8s.orchestrator
@@ -160,83 +145,120 @@ uv run python -m src.k8s.orchestrator
 
 ---
 
-# 🟢 Phase 4: Continuous DevSecOps & Cloud Deployment (GCP)
-
-Automated zero-trust CI/CD pipeline enforcing 5 quality and security gates, keyless Google Cloud authentication via Workload Identity Federation (OIDC), immutable container publishing to Google Artifact Registry, and serverless auto-scaling on Google Cloud Run.
-
-## Pipeline Architecture
+## Phase 4 — DevSecOps & GCP Deployment
 
 ```mermaid
-flowchart LR
-    subgraph CI["Continuous Integration (GitHub Actions)"]
-        PR["Pull Request / Push"] --> UV["setup-uv"]
-        UV --> G1["Ruff"] --> G2["Mypy"] --> G3["Bandit"] --> G4["Pytest (80%+ cov)"]
+flowchart TB
+    subgraph CI["CI · pull requests and pushes to main"]
+        direction LR
+        FMT["ruff format --check"] --> LINT["ruff check"] --> TYP["mypy"] --> SAST["bandit"] --> MAN["K8s + DevSecOps validators"] --> TEST["pytest · coverage ≥ 80%"]
     end
-
-    subgraph CD["Continuous Deployment (GCP)"]
-        G4 --> OIDC["Keyless OIDC<br/>Workload Identity"]
-        OIDC --> GAR["Artifact Registry<br/>sha-${{ github.sha }}"]
-        GAR --> CR["Cloud Run<br/>1Gi RAM · 1 CPU<br/>1–5 instances"]
+    subgraph CD["CD · push to main"]
+        direction LR
+        OIDC["GCP OIDC<br/>Workload Identity Federation"] --> GAR["Artifact Registry<br/>sha-commit tag"] --> RUN["Cloud Run<br/>1 CPU · 1Gi · 1–5 instances"]
     end
+    TEST --> OIDC
 ```
 
-## Supply Chain Security & CVE Version Patches
-
-Transitive dependencies are hardened via `[tool.uv] override-dependencies` in `pyproject.toml` and locked in `uv.lock`, alongside CodeQL `CWE-020` URL/domain sanitization in OIDC claim verification:
-
-| Package | Patched Version | Security Remediation |
-| :--- | :---: | :--- |
-| `gitpython` | `3.1.62` → **`3.2.1`** | Fixes **High** RCE in submodule `.git` path validation prior to cloning |
-| `graphql-core` | `3.2.11` → **`3.2.13`** | Fixes two **High** DoS vulnerabilities in `max_tokens` parser & field validation |
-| `opentelemetry-api` | `1.44.0` → **`1.45.1`** | Fixes **Moderate** DoS in unbounded `tracestate` header parsing (`sdk` & `proto` synced) |
-| `cryptography` | **`>= 50.0.0`** | Enforces hardened OpenSSL bindings and X.509 primitives |
-
-## Offline Verification & DevSecOps CLI
-
-Verify CI quality gates, OIDC token claims exchange, and Cloud Run scaling rules offline:
+### Usage
 
 ```bash
-uv run python -m src.devsecops.orchestrator
+make format       # ruff format
+make lint         # ruff check + mypy
+make test         # pytest with 80% coverage gate
+make security     # bandit SAST
+make check        # pre-commit across all files
+make devsecops    # offline CI gates + OIDC + Cloud Run simulation
 ```
+
+Workflows: `ci.yaml`, `cd.yaml`, `codeql.yml`, `dependency-review.yml`, `docs.yml` and `pr-validation.yml`. On `main`, `cd.yaml` authenticates to GCP with OIDC, pushes `sha-<commit>` to Artifact Registry and deploys Cloud Run. Without `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT_EMAIL` it runs in dry-run validation mode.
+
+Supply-chain hardening is pinned via `[tool.uv] override-dependencies` and `uv.lock`:
+
+| Package | Version | Remediation |
+| :--- | :---: | :--- |
+| `gitpython` | `>= 3.2.1` | High-severity RCE in submodule path validation |
+| `graphql-core` | `>= 3.2.12` | High-severity DoS in the parser and validation |
+| `opentelemetry-api` | `>= 1.45.1` | Moderate DoS via unbounded `tracestate` headers |
+| `cryptography` | `>= 50.0.0` | Hardened OpenSSL bindings and X.509 primitives |
 
 ---
 
-## Quickstart
+## Results
 
-```bash
-make sync-cpu          # or: make sync-gpu
-make super-train       # HPO → train (best config) → ONNX export
-make mlflow            # UI at http://localhost:5000
-```
+Held-out TrashNet test split (15%, 379 images), no data leakage:
 
-Or step by step:
+| Metric | MobileNetV3-Small | MobileNetV3-Large | Δ (Large − Small) |
+| :--- | ---: | ---: | ---: |
+| Test accuracy | 78.10% | **83.11%** | +5.01 pp |
+| Macro F1 | 74.91% | **80.51%** | +5.60 pp |
+| ROC-AUC (OvR) | 0.9472 | **0.9790** | +0.0318 |
+| Test loss | 0.6512 | **0.4879** | −0.1633 |
+| Parameters | 1.52 M | 4.21 M | +2.69 M |
+| ONNX size | 6.08 MB | 16.35 MB | +10.27 MB |
+| PyTorch ↔ ONNX Δmax | 2.15e-6 | 5.72e-6 | within `1e-5` |
 
-| Command | What it does |
-| :-- | :-- |
-| `make train` | Train with `configs/config.yaml` |
-| `make hpo` | Ray Tune search → writes `configs/best_hpo_config.yaml` |
-| `make train-best` | Train using the best HPO config |
-| `make export` | Export to `models/recyclenet.onnx` |
-| `make test` · `make lint` | pytest · ruff + mypy |
+| Class | Support | Small F1 | Large F1 |
+| :--- | :---: | :---: | :---: |
+| Cardboard | 59 | 88.29% | 87.85% |
+| Glass | 78 | 79.78% | 85.88% |
+| Metal | 61 | 77.31% | 82.64% |
+| Paper | 91 | 80.92% | 84.44% |
+| Plastic | 66 | 74.24% | 81.75% |
+| Trash | 24 | 48.89% | 60.47% |
 
-## Layout
+### Model I/O contract
+
+| Field | Specification |
+| :--- | :--- |
+| **Input** | `image` · `float32[batch, 3, 224, 224]` · RGB · ImageNet normalization (μ = 0.485/0.456/0.406, σ = 0.229/0.224/0.225) |
+| **Output** | `logits` · `float32[batch, 6]` |
+| **Classes** | `0` cardboard · `1` glass · `2` metal · `3` paper · `4` plastic · `5` trash |
+
+🤗 Published weights: [LeoYan/recyclenet-mobilenetv3](https://huggingface.co/LeoYan/recyclenet-mobilenetv3) — `recyclenet-small.onnx` for embedded and edge targets, `recyclenet-large.onnx` for accuracy-critical cloud serving.
+
+---
+
+## Repository layout
 
 ```text
-.github/workflows/   CI/CD pipelines (ci.yaml, cd.yaml, codeql, dependency-review)
-configs/             YAML configs (config, smoke, best_hpo)
-k8s/                 Declarative manifests (Deployments, Service, HPA, Ingress, ConfigMap, Secret)
-rust_inference/      High-performance Rust microservice (Axum + ort)
-scripts/             Local lab automation scripts (k8s_local_lab.sh, k8s_local_lab.ps1)
-src/api/             FastAPI baseline inference microservice
-src/components/      data, model, train step, metrics, evals, MLflow logging
-src/devsecops/       DevSecOps CI/CD validator, GCP OIDC & Cloud Run simulator
-src/k8s/             Kubernetes declarative validation & HPA simulation engine
+.github/workflows/   CI/CD, CodeQL, dependency review, docs, PR metadata validation
+benchmarks/          k6 load test + Python dual-engine benchmark harness
+configs/             config.yaml, smoke.yaml (+ generated best_hpo_config.yaml)
+docs/                MkDocs Material documentation
+k8s/                 Kustomize manifests: deployments, service, HPA, ingress, config
+models/              Local ONNX artifacts and model card (git-ignored, published on HF)
+rust_inference/      Axum + ort microservice
+scripts/             k8s_local_lab.sh / k8s_local_lab.ps1 automation
+src/api/             FastAPI inference tier
+src/components/      ingestion, transforms, model, train step, metrics, evals, MLflow
+src/config/          Pydantic settings schema
+src/devsecops/       CI/CD and GCP OIDC / Cloud Run validator
+src/k8s/             Manifest, QoS and HPA control-loop validator
 src/pipeline/        train · hpo · export_onnx · super_train
-src/main.py          CLI (train | hpo | export | super-train)
-models/              ONNX model + model card
-tests/               unit & integration tests
+src/utils/           logging, CLI parser, tracking helpers
+tests/               pytest unit and integration suites
 ```
 
-## Stack
+## Documentation
 
-PyTorch · Ray Train/Tune · Optuna · MLflow · ONNX Runtime · Rust (Axum) · Kubernetes (Minikube + HPA v2) · GitHub Actions · GCP (OIDC + Artifact Registry + Cloud Run) · uv · ruff · mypy · bandit · pytest
+- [Architecture](docs/architecture.md)
+- [Serving architecture](docs/serving_architecture.md)
+- [Kubernetes orchestration](docs/k8s_orchestration.md)
+- [DevSecOps & CI/CD](docs/devsecops_cicd.md)
+- [API reference: components](docs/reference/components.md) · [pipelines](docs/reference/pipeline.md) · [utilities](docs/reference/utils.md)
+- Rendered site: [pilotleoyan.github.io/RecycleNet-K8s](https://pilotleoyan.github.io/RecycleNet-K8s/)
+
+## License & citation
+
+Released under the **MIT License**. If you use RecycleNet in research, please cite:
+
+```bibtex
+@misc{recyclenet2026,
+  author = {Ortega Rivera, Leonardo F.},
+  title = {RecycleNet: Deep Learning & MLOps for Real-Time Waste Classification},
+  year = {2026},
+  publisher = {Hugging Face},
+  url = {https://github.com/PilotLeoYan/RecycleNet-K8s}
+}
+```
