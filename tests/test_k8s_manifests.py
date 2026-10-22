@@ -23,6 +23,40 @@ def _load_yaml(filename: str) -> dict[str, Any]:
     return data
 
 
+def test_configmap_manifest_specifications() -> None:
+    """Validate configmap.yaml contains all required environment variables."""
+    config = _load_yaml("configmap.yaml")
+
+    assert config["apiVersion"] == "v1"
+    assert config["kind"] == "ConfigMap"
+    assert config["metadata"]["name"] == "recyclenet-config"
+
+    data = config["data"]
+    assert data["PORT"] == "8000"
+    assert data["RUST_PORT"] == "8080"
+    assert data["RECYCLENET_MODEL_PATH"] == "/app/models/recyclenet.onnx"
+    assert data["LOG_LEVEL"] == "INFO"
+    assert data["RUST_LOG"] == "info"
+    assert data["MODEL_VARIANT"] == "large"
+    assert data["ORT_DYLIB_PATH"] == "/usr/lib/libonnxruntime.so"
+
+
+def test_secret_manifest_specifications() -> None:
+    """Validate secret.yaml contains base64 credentials and TLS assets."""
+    secret = _load_yaml("secret.yaml")
+
+    assert secret["apiVersion"] == "v1"
+    assert secret["kind"] == "Secret"
+    assert secret["metadata"]["name"] == "recyclenet-secret"
+    assert secret["type"] == "Opaque"
+
+    data = secret["data"]
+    assert "RECYCLENET_API_KEY" in data
+    assert "TELEMETRY_AUTH_TOKEN" in data
+    assert "tls.crt" in data
+    assert "tls.key" in data
+
+
 def test_deployment_manifest_specifications() -> None:
     """Validate deployment.yaml adheres to RecycleNet production architecture."""
     deployment = _load_yaml("deployment.yaml")
@@ -65,9 +99,65 @@ def test_deployment_manifest_specifications() -> None:
     assert readiness["httpGet"]["path"] in ["/ready", "/health"]
     assert readiness["httpGet"]["port"] == 8000
 
+    # Decoupled configuration checks
+    env_from = [
+        ref.get("configMapRef", {}).get("name") or ref.get("secretRef", {}).get("name")
+        for ref in api_container["envFrom"]
+    ]
+    assert "recyclenet-config" in env_from
+    assert "recyclenet-secret" in env_from
+
+    # Security Context checks
+    pod_sec = spec["template"]["spec"]["securityContext"]
+    assert pod_sec["runAsNonRoot"] is True
+    assert pod_sec["runAsUser"] == 10001
+    assert api_container["securityContext"]["allowPrivilegeEscalation"] is False
+
+
+def test_rust_deployment_manifest_specifications() -> None:
+    """Validate deployment-rust.yaml adheres to high-performance edge tier specs."""
+    deployment = _load_yaml("deployment-rust.yaml")
+
+    assert deployment["apiVersion"] == "apps/v1"
+    assert deployment["kind"] == "Deployment"
+    assert deployment["metadata"]["name"] == "recyclenet-rust-deployment"
+
+    spec = deployment["spec"]
+    assert spec["replicas"] == 2
+
+    # Match labels
+    match_labels = spec["selector"]["matchLabels"]
+    pod_labels = spec["template"]["metadata"]["labels"]
+    assert match_labels["app"] == "recyclenet"
+    assert match_labels["component"] == "api-rust"
+    assert pod_labels["runtime"] == "rust"
+
+    # Container checks
+    containers = spec["template"]["spec"]["containers"]
+    assert len(containers) >= 1
+    rust_container = containers[0]
+    assert rust_container["name"] == "recyclenet-rust-api"
+
+    # Port 8080 exposed
+    ports = [p["containerPort"] for p in rust_container["ports"]]
+    assert 8080 in ports
+
+    # Resources (micro footprint)
+    resources = rust_container["resources"]
+    assert resources["requests"]["memory"] == "64Mi"
+    assert resources["limits"]["memory"] == "128Mi"
+
+    # Health Probes on 8080
+    assert rust_container["livenessProbe"]["httpGet"]["port"] == 8080
+    assert rust_container["readinessProbe"]["httpGet"]["port"] == 8080
+
+    # Non-root security
+    assert spec["template"]["spec"]["securityContext"]["runAsNonRoot"] is True
+    assert rust_container["securityContext"]["allowPrivilegeEscalation"] is False
+
 
 def test_service_manifest_specifications() -> None:
-    """Validate service.yaml exposes port 8000 with selector matching deployment."""
+    """Validate service.yaml exposes port 8000 and 8080 matching deployment."""
     service = _load_yaml("service.yaml")
 
     assert service["apiVersion"] == "v1"
@@ -81,6 +171,33 @@ def test_service_manifest_specifications() -> None:
     http_port = next((p for p in ports if p["port"] == 8000), None)
     assert http_port is not None, "Service must expose port 8000"
     assert http_port["targetPort"] == 8000
+
+    rust_port = next((p for p in ports if p["port"] == 8080), None)
+    assert rust_port is not None, "Service must expose port 8080 for Rust tier"
+    assert rust_port["targetPort"] == 8080
+
+
+def test_hpa_manifest_specifications() -> None:
+    """Validate hpa.yaml targets deployment with CPU threshold and scaling behavior."""
+    hpa = _load_yaml("hpa.yaml")
+
+    assert hpa["apiVersion"] == "autoscaling/v2"
+    assert hpa["kind"] == "HorizontalPodAutoscaler"
+    assert hpa["metadata"]["name"] == "recyclenet-hpa"
+
+    spec = hpa["spec"]
+    assert spec["scaleTargetRef"]["name"] == "recyclenet-deployment"
+    assert spec["minReplicas"] == 2
+    assert spec["maxReplicas"] == 5
+
+    metric = spec["metrics"][0]
+    assert metric["type"] == "Resource"
+    assert metric["resource"]["name"] == "cpu"
+    assert metric["resource"]["target"]["averageUtilization"] == 70
+
+    behavior = spec["behavior"]
+    assert behavior["scaleUp"]["stabilizationWindowSeconds"] == 0
+    assert behavior["scaleDown"]["stabilizationWindowSeconds"] == 60
 
 
 def test_ingress_manifest_specifications() -> None:
@@ -96,7 +213,7 @@ def test_ingress_manifest_specifications() -> None:
     # TLS configuration
     assert "tls" in spec and len(spec["tls"]) > 0
     tls_entry = spec["tls"][0]
-    assert "secretName" in tls_entry
+    assert tls_entry["secretName"] == "recyclenet-secret"
     assert len(tls_entry["hosts"]) > 0
 
     # Rules pointing to recyclenet-service:8000
@@ -106,6 +223,23 @@ def test_ingress_manifest_specifications() -> None:
     path_entry = rule["http"]["paths"][0]
     assert path_entry["backend"]["service"]["name"] == "recyclenet-service"
     assert path_entry["backend"]["service"]["port"]["number"] == 8000
+
+
+def test_kustomization_manifest_specifications() -> None:
+    """Validate kustomization.yaml resources include all manifests in logical order."""
+    kustomization = _load_yaml("kustomization.yaml")
+
+    resources = kustomization["resources"]
+    expected_order = [
+        "configmap.yaml",
+        "secret.yaml",
+        "deployment.yaml",
+        "deployment-rust.yaml",
+        "service.yaml",
+        "hpa.yaml",
+        "ingress.yaml",
+    ]
+    assert resources == expected_order
 
 
 def test_dockerfile_multi_stage_structure() -> None:

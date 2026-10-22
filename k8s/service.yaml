@@ -4,13 +4,22 @@ metadata:
   name: recyclenet-service
   labels:
     app: recyclenet
-    component: api
+    component: service
+    tier: backend
 spec:
+  # ClusterIP provides internal cluster VIP routing.
+  # For local Minikube testing without an Ingress controller, developers can either:
+  # 1. Change type to NodePort and run: minikube service recyclenet-service --url
+  # 2. Or use port-forwarding: kubectl port-forward svc/recyclenet-service 8000:8000 8080:8080
   type: ClusterIP
+  selector:
+    app: recyclenet
   ports:
     - name: http
       port: 8000
       targetPort: 8000
       protocol: TCP
-  selector:
-    app: recyclenet
+    - name: http-rust
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
