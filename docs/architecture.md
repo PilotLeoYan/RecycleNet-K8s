@@ -43,16 +43,35 @@ flowchart TD
 
 ## 🗺️ Project Roadmap Phases
 
-1. **Phase 1: Local Training & MLflow Tracking** (Current)
-   * Transfer Learning on MobileNetV3-Small.
-   * Reproducible DataLoaders and augmentations.
-   * SQLite-backed MLflow run tracking and model signature registry.
-2. **Phase 2: FastAPI & Containerization**
-   * Low-latency REST inference endpoint.
-   * Docker multi-stage build.
-3. **Phase 3: Testing & Kubernetes**
-   * Pytest unit and integration test suite.
-   * Local deployment simulation on Minikube / Kubernetes manifests.
-4. **Phase 4: CI/CD & GCP Cloud Run**
-   * GitHub Actions workflow.
-   * Google Artifact Registry and serverless Cloud Run deployment.
+| Phase | Focus Area | Key Technologies | Status |
+| :--- | :--- | :--- | :--- |
+| **Phase 1** | Distributed Training & HPO | PyTorch, Ray Tune, Optuna, MLflow, ONNX | ✅ Completed |
+| **Phase 2** | Dual Inference Architecture | FastAPI, Rust Axum, ONNX Runtime, k6 | ✅ Completed |
+| **Phase 3** | Cloud-Native Orchestration | Kubernetes, Minikube, HPA v2, Zero-Trust | ✅ Completed |
+| **Phase 4** | Continuous DevSecOps & GCP | GitHub Actions, uv, Bandit, OIDC, Cloud Run | ✅ Completed |
+
+### Detailed Phase Specifications
+
+1. **Phase 1: Local Training & MLflow Tracking (Completed ✅)**
+   * Transfer Learning on MobileNetV3-Small with frozen backbone.
+   * Reproducible DataLoaders with deterministic seeding across backends.
+   * Ray Tune + ASHA hyperparameter search writing `best_hpo_config.yaml`.
+   * SQLite-backed MLflow experiment tracking and ONNX model parity verification.
+
+2. **Phase 2: Dual Inference & Containerization (Completed ✅)**
+   * Low-latency Python FastAPI baseline microservice.
+   * High-performance compiled Rust Axum microservice leveraging `ort`.
+   * Numerical parity verification and k6 load testing benchmarks.
+   * Multi-stage unprivileged Dockerfiles with `uv` and `cargo-chef`.
+
+3. **Phase 3: Testing & Kubernetes Orchestration (Completed ✅)**
+   * Pytest unit and integration test suite with high coverage.
+   * Declarative Kubernetes manifests with zero-trust security (`runAsNonRoot: true`, `drop: [ALL]`).
+   * Burstable QoS resource quotas and closed-loop HPA v2 autoscaling.
+   * Local Minikube automated 5-step lab runbook with zero cloud cost.
+
+4. **Phase 4: Continuous DevSecOps & GCP Cloud Deployment (Completed ✅)**
+   * GitHub Actions CI pipeline with 5 quality and security gates (`ruff`, `mypy`, `bandit`, `pytest`).
+   * Keyless Google Cloud authentication using Workload Identity Federation (OIDC).
+   * Immutable container publishing to Google Artifact Registry (`sha-${{ github.sha }}`).
+   * Serverless deployment to Google Cloud Run with warm instances and concurrency limits.
