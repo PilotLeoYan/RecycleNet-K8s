@@ -217,6 +217,26 @@ def test_predict_invalid_image_bytes(client_with_model: TestClient) -> None:
     assert "Cannot decode image" in response.json()["detail"]
 
 
+def test_predict_rejects_unsupported_image_format(
+    client_with_model: TestClient,
+) -> None:
+    """Prediction should return 400 when image format is not JPEG or PNG (e.g. BMP)."""
+    bmp_bytes = _generate_test_image_bytes(fmt="BMP")
+    response = client_with_model.post(
+        "/predict",
+        files={"file": ("waste.bmp", bmp_bytes, "image/bmp")},
+    )
+    assert response.status_code == 400
+    assert "Unsupported image format" in response.json()["detail"]
+
+    # Also test ImagePreprocessor directly
+    preprocessor = ImagePreprocessor()
+    with pytest.raises(HTTPException) as exc_info:
+        preprocessor.preprocess(bmp_bytes)
+    assert exc_info.value.status_code == 400
+    assert "Unsupported image format" in exc_info.value.detail
+
+
 def test_predict_invalid_base64_string(client_with_model: TestClient) -> None:
     """Prediction should return 400 when base64 string is malformed."""
     response = client_with_model.post(

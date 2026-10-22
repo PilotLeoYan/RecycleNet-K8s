@@ -102,10 +102,23 @@ class ImagePreprocessor:
     def preprocess(self, image_bytes: bytes) -> torch.Tensor:
         """Convert raw image bytes into a normalized 4D tensor ready for inference.
 
-        Raises HTTPException(status_code=400) if image decoding fails.
+        Raises HTTPException(status_code=400) if image decoding fails or format
+        is unsupported.
         """
         try:
-            pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            raw_img = Image.open(io.BytesIO(image_bytes))
+            img_format = (raw_img.format or "").upper()
+            if img_format not in {"JPEG", "PNG", "JPG", "MPO"}:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Unsupported image format: {raw_img.format}. "
+                        "Only JPEG and PNG are supported."
+                    ),
+                )
+            pil_image = raw_img.convert("RGB")
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(
                 status_code=400, detail=f"Cannot decode image: {exc}"
