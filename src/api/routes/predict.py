@@ -3,87 +3,53 @@
 Accepts an image either as a multipart ``UploadFile`` (``file``) **or** as a
 base64-encoded string (``image_base64``) in a form field. Optional telemetry
 metadata (GPS coordinates) can be included.
-
-The endpoint:
-1. Decodes the incoming image bytes using Pillow.
-2. Applies the same ImageNet preprocessing used during training
-   (resize 224×224, normalize with ImageNet stats).
-3. Runs a forward pass through the in-memory MobileNetV3-Small model.
-4. Returns the predicted class label, confidence score, and all class
-   probabilities alongside any provided telemetry.
 """
 
+from __future__ import annotations
+
 import base64
-import io
-import json
 import logging
 
-import anyio
 import torch
-import torch.nn.functional as F
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from PIL import Image
-from pydantic import BaseModel, Field
-from torchvision.transforms import v2
+
+from src.api.schemas import PredictionResponse, PredictionResult, Telemetry
+from src.api.service import (
+    _DEFAULT_CLASSES,
+    ImagePreprocessor,
+    InferenceModelProtocol,
+    InferenceService,
+    TelemetryParser,
+)
 
 logger = logging.getLogger("recyclenet.api.predict")
 
 router = APIRouter()
 
-# ── Preprocessing pipeline (must match training transforms) ─────────────────
-_INFERENCE_TRANSFORM = v2.Compose(
-    [
-        v2.ToImage(),
-        v2.ToDtype(torch.float32, scale=True),
-        v2.Resize(size=(224, 224)),
-        v2.Normalize(
-            mean=(0.485, 0.456, 0.406),
-            std=(0.229, 0.224, 0.225),
-        ),
-    ]
-)
-
-
-class Telemetry(BaseModel):
-    latitude: float | None = Field(None, description="Latitude in decimal degrees")
-    longitude: float | None = Field(None, description="Longitude in decimal degrees")
-
-
-class PredictionResult(BaseModel):
-    predicted_class: str = Field(..., description="Top-1 predicted waste category")
-    confidence: float = Field(
-        ..., description="Softmax confidence of the top-1 class (0–1)"
-    )
-    class_probabilities: dict[str, float] = Field(
-        ..., description="Softmax probability for every class"
-    )
-    telemetry: Telemetry | None = Field(None, description="GPS metadata if provided")
+_default_service = InferenceService()
 
 
 def _preprocess(image_bytes: bytes) -> torch.Tensor:
-    """Convert raw image bytes → normalised 4-D tensor ready for the model."""
-    try:
-        pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    except Exception as exc:
-        raise HTTPException(
-            status_code=400, detail=f"Cannot decode image: {exc}"
-        ) from exc
-
-    tensor: torch.Tensor = _INFERENCE_TRANSFORM(pil_image)  # (3, 224, 224)
-    return tensor.unsqueeze(0)  # (1, 3, 224, 224)
+    """Backward-compatible helper to preprocess image bytes."""
+    return _default_service.preprocessor.preprocess(image_bytes)
 
 
-def _run_inference(model: torch.nn.Module, input_tensor: torch.Tensor) -> torch.Tensor:
-    """Execute model inference in worker thread under torch.inference_mode."""
-    with torch.inference_mode():
-        logits: torch.Tensor = model(input_tensor)  # (1, num_classes)
-        return F.softmax(logits, dim=1)[0]  # (num_classes,)
+def _run_inference(
+    model: InferenceModelProtocol, input_tensor: torch.Tensor
+) -> torch.Tensor:
+    """Backward-compatible helper to execute inference."""
+    return InferenceService._run_inference(model, input_tensor)
 
 
 @router.post(
-    "/",
-    response_model=PredictionResult,
+    "",
+    response_model=PredictionResponse,
     summary="Run RecycleNet inference on a waste image",
+)
+@router.post(
+    "/",
+    response_model=PredictionResponse,
+    include_in_schema=False,
 )
 async def predict(
     request: Request,
@@ -97,19 +63,18 @@ async def predict(
         None,
         description='Optional telemetry JSON: {"latitude": 0, "longitude": 0}',
     ),
-) -> PredictionResult:
+) -> PredictionResponse:
     """Classify a waste image and return the predicted category with confidence.
 
     Send either a multipart ``file`` **or** a ``image_base64`` form field.
-    GPS coordinates are optional.
+    GPS coordinates are optional. Supports both ``/predict`` and ``/predict/``.
     """
-    # ── Guard: model must be loaded ──────────────────────────────────────────
-    model = getattr(request.app.state, "model", None)
-    model_ready = getattr(request.app.state, "model_ready", False)
+    model: InferenceModelProtocol | None = getattr(request.app.state, "model", None)
+    model_ready: bool = getattr(request.app.state, "model_ready", False)
     idx_to_class: dict[int, str] = getattr(
         request.app.state,
         "idx_to_class",
-        {0: "cardboard", 1: "glass", 2: "metal", 3: "paper", 4: "plastic", 5: "trash"},
+        _DEFAULT_CLASSES.copy(),
     )
 
     if not model_ready or model is None:
@@ -117,7 +82,6 @@ async def predict(
             status_code=503, detail="Model not loaded – service unavailable"
         )
 
-    # ── Extract raw image bytes ──────────────────────────────────────────────
     if file is not None:
         image_bytes = await file.read()
     elif image_base64:
@@ -133,56 +97,30 @@ async def predict(
             detail="No image provided – send a 'file' or 'image_base64'",
         )
 
-    # ── Preprocessing ────────────────────────────────────────────────────────
-    input_tensor = _preprocess(image_bytes)  # (1, 3, 224, 224)
-
-    # ── Inference (offloaded to thread pool to prevent event loop freeze) ───
-    probs = await anyio.to_thread.run_sync(_run_inference, model, input_tensor)
-
-    # ── Build response ───────────────────────────────────────────────────────
-    top1_idx: int = int(probs.argmax().item())
-    top1_conf: float = float(probs[top1_idx].item())
-    predicted_class: str = idx_to_class.get(top1_idx, f"class_{top1_idx}")
-
-    class_probabilities: dict[str, float] = {
-        idx_to_class.get(i, f"class_{i}"): round(float(p), 6)
-        for i, p in enumerate(probs.tolist())
-    }
-
-    # ── Parse Telemetry ──────────────────────────────────────────────────────
-    telemetry_obj: Telemetry | None = None
-    if telemetry and telemetry.strip():
-        try:
-            raw_tel = json.loads(telemetry)
-            if isinstance(raw_tel, dict):
-                lat_raw = raw_tel.get("latitude")
-                lon_raw = raw_tel.get("longitude")
-                lat = float(lat_raw) if lat_raw is not None else None
-                lon = float(lon_raw) if lon_raw is not None else None
-                telemetry_obj = Telemetry(latitude=lat, longitude=lon)
-        except Exception as exc:
-            safe_telemetry = (
-                telemetry.replace("\r", "").replace("\n", "")
-                if telemetry is not None
-                else None
-            )
-            logger.warning(
-                "Could not parse telemetry JSON: %s (%s)", safe_telemetry, exc
-            )
-
-    if telemetry_obj is None and (latitude is not None or longitude is not None):
-        telemetry_obj = Telemetry(latitude=latitude, longitude=longitude)
-
-    logger.info(
-        "Prediction: %s (%.2f%%)  telemetry=%s",
-        predicted_class,
-        top1_conf * 100,
-        telemetry_obj,
+    service: InferenceService = (
+        getattr(request.app.state, "service", None) or _default_service
     )
 
-    return PredictionResult(
-        predicted_class=predicted_class,
-        confidence=round(top1_conf, 6),
-        class_probabilities=class_probabilities,
-        telemetry=telemetry_obj,
+    return await service.predict(
+        model=model,
+        idx_to_class=idx_to_class,
+        image_bytes=image_bytes,
+        latitude=latitude,
+        longitude=longitude,
+        telemetry_str=telemetry,
     )
+
+
+__all__ = [
+    "ImagePreprocessor",
+    "InferenceModelProtocol",
+    "InferenceService",
+    "PredictionResponse",
+    "PredictionResult",
+    "Telemetry",
+    "TelemetryParser",
+    "_preprocess",
+    "_run_inference",
+    "predict",
+    "router",
+]

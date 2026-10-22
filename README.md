@@ -2,7 +2,7 @@
 
 Waste classification (TrashNet, 6 classes) with an end-to-end MLOps pipeline.
 
-> **Status:** 🟢 Phase 1 (Training) done · 🟡 Phase 2–4 (Inference, Kubernetes, CI/CD) in progress
+> **Status:** 🟢 Phase 1 (Training) & Phase 2 (Inference) done · 🟢 Phase 3 (Kubernetes) ready · 🟡 Phase 4 (CI/CD) in progress
 >
 > 🤗 **Model:** [LeoYan/recyclenet-mobilenetv3](https://huggingface.co/LeoYan/recyclenet-mobilenetv3)
 
@@ -10,7 +10,7 @@ Waste classification (TrashNet, 6 classes) with an end-to-end MLOps pipeline.
 
 ```mermaid
 flowchart LR
-    F1["✅ 1. Training<br/>HPO + ONNX"] --> F2["🟡 2. Inference<br/>FastAPI + Rust"] --> F3["🟡 3. Kubernetes<br/>Minikube + HPA"] --> F4["🟡 4. CI/CD<br/>GitHub Actions + GCP"]
+    F1["✅ 1. Training<br/>HPO + ONNX"] --> F2["✅ 2. Inference<br/>FastAPI + Rust"] --> F3["✅ 3. Kubernetes<br/>Minikube + HPA"] --> F4["🟡 4. CI/CD<br/>GitHub Actions + GCP"]
 ```
 
 ---
@@ -91,6 +91,75 @@ flowchart LR
 
 🤗 **Trained model:** [LeoYan/recyclenet-mobilenetv3](https://huggingface.co/LeoYan/recyclenet-mobilenetv3)
 
+---
+
+# 🟢 Phase 3: Cloud-Native Kubernetes Orchestration & Local HPA Lab
+
+Production-grade declarative orchestration with zero-trust container security, high availability, and dynamic horizontal pod autoscaling tested locally on Minikube with zero cloud cost.
+
+## Manifest Architecture
+
+```mermaid
+flowchart TD
+    Client["Client / Edge Device"] -->|HTTPS :443| Ingress["Ingress (NGINX)<br/>recyclenet-ingress"]
+    Ingress --> Service["Service (ClusterIP)<br/>recyclenet-service"]
+    Service -->|:8000| PyPods["Python API (2 Replicas)<br/>recyclenet-deployment<br/>QoS: Burstable (512Mi/1Gi)"]
+    Service -->|:8080| RustPods["Rust API (2 Replicas)<br/>recyclenet-rust-deployment<br/>QoS: Burstable (64Mi/128Mi)"]
+    ConfigMap[("ConfigMap<br/>recyclenet-config")] -.-> PyPods & RustPods
+    Secret[("Secret<br/>recyclenet-secret")] -.-> PyPods & RustPods
+    HPA["HPA v2<br/>2–5 replicas @ 70% CPU"] -->|Scales| PyPods
+    MetricsServer["Metrics Server"] -.->|Scrapes| HPA
+```
+
+## Minikube Local Lab Commands
+
+Run the automated 5-step lab workflow using the cross-platform automation scripts:
+
+```bash
+# Linux / macOS / WSL2 / Git Bash:
+./scripts/k8s_local_lab.sh --dry-run all   # Preview without cluster
+./scripts/k8s_local_lab.sh all            # Execute complete 5-step lab
+
+# Windows PowerShell:
+.\scripts\k8s_local_lab.ps1 -DryRun -Action all
+.\scripts\k8s_local_lab.ps1 -Action all
+```
+
+Or execute the 5 steps manually:
+
+```bash
+# 1. Start local cluster
+minikube start --driver=docker --cpus=4 --memory=4096
+
+# 2. Enable metrics server for HPA
+minikube addons enable metrics-server
+
+# 3. Build container images inside Minikube Docker daemon
+eval $(minikube docker-env)
+docker build -t recyclenet-api:local .
+docker build -f Dockerfile.rust -t recyclenet-rust:local .
+
+# 4. Deploy declarative manifests & await rollout
+kubectl apply -k k8s/
+kubectl rollout status deployment/recyclenet-deployment --timeout=120s
+kubectl rollout status deployment/recyclenet-rust-deployment --timeout=120s
+
+# 5. Live HPA Autoscaling stress test
+kubectl port-forward svc/recyclenet-service 8000:8000 8080:8080 &
+k6 run -e TARGET_URL=http://localhost:8000 benchmarks/k6_load_test.js
+kubectl get hpa recyclenet-hpa -w
+```
+
+## Offline Simulation & Manifest Validation
+
+Verify manifest schemas, Burstable QoS calculations, and HPA control loop dynamics without requiring Minikube or Docker:
+
+```bash
+uv run python -m src.k8s.orchestrator
+```
+
+---
+
 ## Quickstart
 
 ```bash
@@ -113,13 +182,18 @@ Or step by step:
 
 ```text
 configs/             YAML configs (config, smoke, best_hpo)
+k8s/                 Declarative manifests (Deployments, Service, HPA, Ingress, ConfigMap, Secret)
+rust_inference/      High-performance Rust microservice (Axum + ort)
+scripts/             Local lab automation scripts (k8s_local_lab.sh, k8s_local_lab.ps1)
+src/api/             FastAPI baseline inference microservice
 src/components/      data, model, train step, metrics, evals, MLflow logging
+src/k8s/             Kubernetes declarative validation & HPA simulation engine
 src/pipeline/        train · hpo · export_onnx · super_train
 src/main.py          CLI (train | hpo | export | super-train)
 models/              ONNX model + model card
-tests/               unit tests
+tests/               unit & integration tests
 ```
 
 ## Stack
 
-PyTorch · Ray Train/Tune · Optuna · MLflow · ONNX Runtime · uv · ruff · mypy · pytest
+PyTorch · Ray Train/Tune · Optuna · MLflow · ONNX Runtime · Rust (Axum) · Kubernetes (Minikube + HPA v2) · uv · ruff · mypy · pytest

@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recyclenet-rust-deployment
+  labels:
+    app: recyclenet
+    component: api-rust
+    tier: backend
+    runtime: rust
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: recyclenet
+      component: api-rust
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: recyclenet
+        component: api-rust
+        tier: backend
+        runtime: rust
+    spec:
+      # Pod-level security context enforcing non-root execution
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      # Soft anti-affinity to spread replicas across distinct nodes for High Availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - recyclenet
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: recyclenet-rust-api
+          image: recyclenet-rust:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http-rust
+              containerPort: 8080
+              protocol: TCP
+          # Bulk decouple environment variables from ConfigMap and Secret
+          envFrom:
+            - configMapRef:
+                name: recyclenet-config
+            - secretRef:
+                name: recyclenet-secret
+          # Granular environment variable overrides and key references
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: recyclenet-config
+                  key: RUST_PORT
+            - name: RECYCLENET_MODEL_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: recyclenet-config
+                  key: RECYCLENET_MODEL_PATH
+            - name: RUST_LOG
+              valueFrom:
+                configMapKeyRef:
+                  name: recyclenet-config
+                  key: RUST_LOG
+            - name: ORT_DYLIB_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: recyclenet-config
+                  key: ORT_DYLIB_PATH
+                  optional: true
+            - name: RECYCLENET_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: recyclenet-secret
+                  key: RECYCLENET_API_KEY
+                  optional: true
+          # High-density compute resource guarantees (<45MB RSS, sub-millisecond execution)
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+          # Liveness probe: checks Tokio event loop and HTTP server responsiveness
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Readiness probe: checks ONNX Runtime session initialization and tensor readiness
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          # Container-level security hardening
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL

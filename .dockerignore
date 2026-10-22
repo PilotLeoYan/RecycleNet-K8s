@@ -1,0 +1,30 @@
+# Git & Version Control
+.git/
+.github/
+.gitignore
+
+# Virtual Environments & Caching
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Testing & Documentation
+tests/
+docs/
+mkdocs.yml
+
+# MLOps Experiments & Datasets
+mlruns/
+mlflow.db
+data/
+trashnet/
+*.log
+
+# Project configs and metadata not needed at runtime
+.pre-commit-config.yaml
+Makefile
+README.md
