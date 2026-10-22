@@ -30,11 +30,14 @@ COPY src/ ./src/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --extra cpu
 
+# Allow selecting 'large' or 'small' MobileNetV3 ONNX model at build time (default: large)
+ARG MODEL_VARIANT=large
+
 # Ensure models directory exists and download default ONNX weights from Hugging Face
 RUN mkdir -p /app/models && \
     apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
-    curl -fsSL https://huggingface.co/LeoYan/recyclenet-mobilenetv3/resolve/main/recyclenet.onnx -o /app/models/recyclenet.onnx && \
-    curl -fsSL https://huggingface.co/LeoYan/recyclenet-mobilenetv3/resolve/main/classes_mapping.json -o /app/models/classes_mapping.json && \
+    curl -fsSL "https://huggingface.co/LeoYan/recyclenet-mobilenetv3/resolve/main/recyclenet-${MODEL_VARIANT}.onnx" -o /app/models/recyclenet.onnx && \
+    curl -fsSL "https://huggingface.co/LeoYan/recyclenet-mobilenetv3/resolve/main/classes_mapping.json" -o /app/models/classes_mapping.json && \
     rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------------------------
