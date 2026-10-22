@@ -42,7 +42,9 @@ gpu = [
 package = false
 override-dependencies = [
     "cryptography>=50.0.0",
-    "gitpython>=3.1.60",
+    "gitpython>=3.2.1",
+    "graphql-core>=3.2.12",
+    "opentelemetry-api>=1.45.1",
 ]
 conflicts = [
     [
