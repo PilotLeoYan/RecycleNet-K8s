@@ -780,3 +780,16 @@ def test_orchestrator_main_entrypoint(capsys: pytest.CaptureFixture[str]) -> Non
     assert "Kubernetes Manifest & Zero-Trust Security Audit" in captured.out
     assert "HPA v2 Workload Trajectory Simulation" in captured.out
     assert "Local Minikube Cloud-Native Lab Runbook" in captured.out
+
+
+def test_k8s_package_lazy_getattr() -> None:
+    """Verify src.k8s lazy attribute export and AttributeError handling."""
+    import src.k8s
+
+    # Valid export from __all__
+    audit_report_cls = getattr(src.k8s, "AuditReport")
+    assert audit_report_cls is AuditReport
+
+    # Invalid attribute raises AttributeError
+    with pytest.raises(AttributeError, match="has no attribute 'NonExistentAttribute'"):
+        _ = getattr(src.k8s, "NonExistentAttribute")
