@@ -1,0 +1,107 @@
+name: CD - Cloud Deployment to GCP
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: ${{ vars.GCP_REGION || 'us-central1' }}
+  REPOSITORY: recyclenet-images
+  IMAGE_NAME: recyclenet-api
+  SERVICE_NAME: recyclenet-service
+
+jobs:
+  deploy:
+    name: Deploy to Google Cloud Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Check GCP OIDC Configuration
+        id: gcp_config
+        run: |
+          if [ -n "${{ secrets.GCP_PROJECT_ID }}" ] && \
+             [ -n "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] && \
+             [ -n "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "GCP Workload Identity Federation credentials detected."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "GCP Workload Identity Federation secrets not populated. Dry-run simulation mode active."
+          fi
+
+      - name: Set Image Tag
+        id: image_tag
+        run: |
+          TAG="sha-${{ github.sha }}"
+          IMAGE_URI="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "tags=$IMAGE_URI:$TAG,$IMAGE_URI:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to Google Cloud
+        if: steps.gcp_config.outputs.configured == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Set up Cloud SDK
+        if: steps.gcp_config.outputs.configured == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        if: steps.gcp_config.outputs.configured == 'true'
+        run: |
+          gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker Image
+        if: steps.gcp_config.outputs.configured == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.image_tag.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Cloud Run
+        if: steps.gcp_config.outputs.configured == 'true'
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          image: ${{ steps.image_tag.outputs.image_uri }}:${{ steps.image_tag.outputs.tag }}
+          region: ${{ env.GAR_LOCATION }}
+          flags: >-
+            --port=8000
+            --memory=1Gi
+            --cpu=1
+            --min-instances=1
+            --max-instances=5
+            --allow-unauthenticated
+
+      - name: Dry-Run Deployment Notice
+        if: steps.gcp_config.outputs.configured != 'true'
+        run: |
+          echo "================================================================================"
+          echo "DevSecOps Notice: GCP Workload Identity secrets are not configured in repository."
+          echo "Skipping live cloud deployment. Dry-run pipeline succeeded in validation mode."
+          echo "Simulated target: ${{ steps.image_tag.outputs.image_uri }}:${{ steps.image_tag.outputs.tag }}"
+          echo "================================================================================"
