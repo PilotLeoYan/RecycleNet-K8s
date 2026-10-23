@@ -1,0 +1,1683 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="API documentation and reference for RecycleNet-K8s">
+      
+      
+        <meta name="author" content="LeoYan">
+      
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../k8s_orchestration/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Serving Architecture - RecycleNet MLOps Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#recyclenet-k8s-dual-inference-edgeiot-serving-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="RecycleNet MLOps Docs" class="md-header__button md-logo" aria-label="RecycleNet MLOps Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RecycleNet MLOps Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Serving Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/PilotLeoYan/RecycleNet-K8s" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RecycleNet-K8s
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture & MLOps
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Serving Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../k8s_orchestration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Kubernetes Orchestration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../devsecops_cicd/" class="md-tabs__link">
+          
+  
+  
+  DevSecOps & Cloud Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/components/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="RecycleNet MLOps Docs" class="md-nav__button md-logo" aria-label="RecycleNet MLOps Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RecycleNet MLOps Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PilotLeoYan/RecycleNet-K8s" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RecycleNet-K8s
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & MLOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serving Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serving Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-executive-summary-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Executive Summary &amp; Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-system-architecture-dual-serving-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. System Architecture &amp; Dual Serving Topology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. System Architecture &amp; Dual Serving Topology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dual-serving-topology-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dual Serving Topology Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-solid-design-of-python-serving-tier-srcapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. SOLID Design of Python Serving Tier (src/api/)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. SOLID Design of Python Serving Tier (src/api/)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lifespan-state-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifespan State Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-systems-programming-architecture-rust-axum-engine-rust_inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Systems Programming Architecture: Rust Axum Engine (rust_inference/)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Systems Programming Architecture: Rust Axum Engine (rust_inference/)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#architecture-highlights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture Highlights
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-preprocessing-numerical-parity-eliminating-train-serve-skew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Preprocessing &amp; Numerical Parity (Eliminating Train-Serve Skew)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Preprocessing &amp; Numerical Parity (Eliminating Train-Serve Skew)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mathematical-transformation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mathematical Transformation Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#automated-numerical-parity-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automated Numerical Parity Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-scientific-benchmarking-methodology-performance-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Scientific Benchmarking Methodology &amp; Performance Metrics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Scientific Benchmarking Methodology &amp; Performance Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#measured-performance-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measured Performance Dimensions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-load-testing-with-k6-benchmarksk6_load_testjs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Load Testing with k6 (benchmarks/k6_load_test.js)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production Load Testing with k6 (benchmarks/k6_load_test.js)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strict-service-level-objectives-slos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strict Service Level Objectives (SLOs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-edgeiot-cloud-native-deployment-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Edge/IoT &amp; Cloud-Native Deployment Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Edge/IoT &amp; Cloud-Native Deployment Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-edge-smart-waste-bin-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. Edge / Smart Waste Bin Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-cloud-native-kubernetes-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. Cloud-Native Kubernetes Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-architectural-summary-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Architectural Summary Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../k8s_orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DevSecOps & Cloud Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    DevSecOps & Cloud Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devsecops_cicd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp_cloud_run_deployment_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Cloud Run Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-executive-summary-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Executive Summary &amp; Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-system-architecture-dual-serving-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. System Architecture &amp; Dual Serving Topology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. System Architecture &amp; Dual Serving Topology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dual-serving-topology-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dual Serving Topology Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-solid-design-of-python-serving-tier-srcapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. SOLID Design of Python Serving Tier (src/api/)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. SOLID Design of Python Serving Tier (src/api/)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lifespan-state-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifespan State Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-systems-programming-architecture-rust-axum-engine-rust_inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Systems Programming Architecture: Rust Axum Engine (rust_inference/)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Systems Programming Architecture: Rust Axum Engine (rust_inference/)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#architecture-highlights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture Highlights
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-preprocessing-numerical-parity-eliminating-train-serve-skew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Preprocessing &amp; Numerical Parity (Eliminating Train-Serve Skew)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Preprocessing &amp; Numerical Parity (Eliminating Train-Serve Skew)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mathematical-transformation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mathematical Transformation Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#automated-numerical-parity-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automated Numerical Parity Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-scientific-benchmarking-methodology-performance-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Scientific Benchmarking Methodology &amp; Performance Metrics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Scientific Benchmarking Methodology &amp; Performance Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#measured-performance-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measured Performance Dimensions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-load-testing-with-k6-benchmarksk6_load_testjs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Load Testing with k6 (benchmarks/k6_load_test.js)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Production Load Testing with k6 (benchmarks/k6_load_test.js)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#strict-service-level-objectives-slos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strict Service Level Objectives (SLOs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-edgeiot-cloud-native-deployment-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Edge/IoT &amp; Cloud-Native Deployment Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Edge/IoT &amp; Cloud-Native Deployment Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-edge-smart-waste-bin-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. Edge / Smart Waste Bin Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-cloud-native-kubernetes-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. Cloud-Native Kubernetes Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-architectural-summary-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Architectural Summary Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="recyclenet-k8s-dual-inference-edgeiot-serving-architecture">🏗️ RecycleNet-K8s: Dual Inference &amp; Edge/IoT Serving Architecture</h1>
+<h2 id="1-executive-summary-purpose">1. Executive Summary &amp; Purpose</h2>
+<p>The <strong>RecycleNet-K8s</strong> serving infrastructure is engineered to solve a fundamental dilemma in modern production Machine Learning: <strong>how to bridge rapid cloud development with ultra-low latency, deterministic edge inference</strong>.</p>
+<p>Standard deep learning deployment pipelines frequently rely solely on high-level Python web frameworks (such as FastAPI, Flask, or TorchServe). While well-suited for experimentation and standard cloud APIs, Python introduces considerable drawbacks for edge environments:
+- High container footprints (<strong>~1.2 GB</strong> image size due to PyTorch wheels, CUDA dependencies, and Python runtimes).
+- Significant resident memory consumption (<strong>~350–500 MB RSS</strong> at idle, scaling up under load).
+- Non-deterministic tail latency caused by Global Interpreter Lock (GIL) contention and unpredictable Garbage Collection (GC) pauses.
+- Prolonged cold-start times (2–5 seconds), hindering agile Kubernetes Horizontal Pod Autoscaling (HPA).</p>
+<p>To address these challenges, RecycleNet-K8s establishes a <strong>Dual Serving Topology</strong>:
+1. <strong>Python Cloud Baseline Tier (<code>src/api/</code>)</strong>: Built on FastAPI and ONNX Runtime CPU Execution Provider. Provides rapid iteration, dynamic telemetry parsing, and frictionless integration with the MLflow model registry.
+2. <strong>Rust High-Performance Edge Tier (<code>rust_inference/</code>)</strong>: Built on Axum 0.8, Tokio, and the <code>ort</code> crate (ONNX Runtime C-API FFI bindings). Delivers sub-millisecond dispatch, zero-copy memory transfers, deterministic execution without garbage collection, a microscopic container footprint (<strong>&lt;40 MB</strong>), and tiny memory consumption (<strong>&lt;45 MB RSS</strong>).</p>
+<p>Both engines strictly implement identical REST API contracts, guarantee numerical parity, and undergo automated load validation with <code>k6</code> and a dedicated Python scientific benchmarking harness.</p>
+<hr />
+<h2 id="2-system-architecture-dual-serving-topology">2. System Architecture &amp; Dual Serving Topology</h2>
+<pre class="mermaid"><code>flowchart TD
+    Client["Client / Edge Device / Smart Waste Bin"] --&gt;|HTTP / REST| Ingress["Kubernetes Ingress / Gateway"]
+
+    subgraph K8sCluster["RecycleNet Serving Infrastructure"]
+        Ingress --&gt;|Route / In-Process| PythonFastAPI["Python Serving Tier (Port 8000)&lt;br/&gt;FastAPI + Uvicorn&lt;br/&gt;• Schema Validation (Pydantic v2)&lt;br/&gt;• torchvision.transforms.v2&lt;br/&gt;• onnxruntime Engine"]
+        Ingress --&gt;|Route / Edge Gateway| RustAxum["Rust Edge Serving Tier (Port 8080)&lt;br/&gt;Axum + Tokio&lt;br/&gt;• Serde Parsing &amp; Telemetry&lt;br/&gt;• image + ndarray Pipeline&lt;br/&gt;• ort Engine (ONNX C-API)"]
+    end
+
+    subgraph StorageEngine["Shared Model Artifact"]
+        ONNXModel[("MobileNetV3 ONNX&lt;br/&gt;models/recyclenet.onnx&lt;br/&gt;(Opset 18, 6 Classes)")]
+    end
+
+    PythonFastAPI --&gt;|Load &amp; Forward| ONNXModel
+    RustAxum --&gt;|"Load &amp; Forward (Zero-Copy)"| ONNXModel</code></pre>
+<h3 id="dual-serving-topology-comparison">Dual Serving Topology Comparison</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Architectural Dimension</th>
+<th style="text-align: left;">Python Cloud Tier (<code>src/api/</code>)</th>
+<th style="text-align: left;">Rust Edge Tier (<code>rust_inference/</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Primary Framework</strong></td>
+<td style="text-align: left;">FastAPI (ASGI) + Uvicorn</td>
+<td style="text-align: left;">Axum 0.8 + Tokio Async Engine</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Inference Runtime</strong></td>
+<td style="text-align: left;"><code>onnxruntime</code> (Python C-extension)</td>
+<td style="text-align: left;"><code>ort</code> 2.0 (C-API bindings via FFI)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Concurrency Model</strong></td>
+<td style="text-align: left;">Async event loop + thread pool worker offloading</td>
+<td style="text-align: left;">Work-stealing multi-threaded Tokio reactor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Memory Management</strong></td>
+<td style="text-align: left;">Python GC + reference counting</td>
+<td style="text-align: left;">Deterministic compile-time RAII (Zero GC)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Container Footprint</strong></td>
+<td style="text-align: left;"><code>~1.2 GB</code> (<code>python:3.14-slim</code> + dependencies)</td>
+<td style="text-align: left;"><code>~38 MB</code> (Multi-stage static / <code>debian-slim</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Resident Memory (RSS)</strong></td>
+<td style="text-align: left;"><code>~350 MB – 500 MB</code></td>
+<td style="text-align: left;"><code>~35 MB – 45 MB</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cold-Start Time</strong></td>
+<td style="text-align: left;"><code>~2.5 s</code></td>
+<td style="text-align: left;"><code>&lt; 50 ms</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ideal Deployment</strong></td>
+<td style="text-align: left;">Cloud Kubernetes Pods, Analytics Services</td>
+<td style="text-align: left;">Edge Gateways, Smart Bins, Jetson / Pi, High-RPS Pods</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-solid-design-of-python-serving-tier-srcapi">3. SOLID Design of Python Serving Tier (<code>src/api/</code>)</h2>
+<p>The Python API tier is strictly structured according to the five <strong>SOLID</strong> principles of software architecture:</p>
+<pre class="mermaid"><code>classDiagram
+    class InferenceModelProtocol {
+        &lt;&lt;Protocol / Interface&gt;&gt;
+        +__call__(x: Tensor) Tensor
+    }
+    class OnnxModelWrapper {
+        -session: ort.InferenceSession
+        -input_name: str
+        -output_name: str
+        +__call__(x: Tensor | ndarray) Tensor
+        +eval() None
+    }
+    class ImagePreprocessor {
+        -transform: v2.Compose
+        +preprocess(image_bytes: bytes) Tensor
+    }
+    class TelemetryParser {
+        +parse(telemetry, latitude, longitude) Telemetry
+    }
+    class InferenceService {
+        -preprocessor: ImagePreprocessor
+        -telemetry_parser: TelemetryParser
+        +predict(model, idx_to_class, image_bytes, ...) PredictionResponse
+        +get_info(app_state) InfoResponse
+    }
+
+    InferenceModelProtocol &lt;|.. OnnxModelWrapper : Implements
+    InferenceService --&gt; InferenceModelProtocol : Uses (Dependency Inversion)
+    InferenceService --&gt; ImagePreprocessor : Uses (Single Responsibility)
+    InferenceService --&gt; TelemetryParser : Uses (Single Responsibility)</code></pre>
+<ol>
+<li><strong>Single Responsibility Principle (SRP)</strong>:</li>
+<li><code>ImagePreprocessor</code>: Dedicated solely to decoding image bytes, resizing, and normalizing tensors.</li>
+<li><code>TelemetryParser</code>: Dedicated solely to parsing, sanitizing, and validating geographic coordinates.</li>
+<li><code>InferenceService</code>: Coordinates the domain pipeline (preprocessing, inference dispatch, softmax probability mapping).</li>
+<li><code>routes/health.py</code> &amp; <code>routes/predict.py</code>: Focused entirely on HTTP transport, status codes, and routing.</li>
+<li><strong>Open/Closed Principle (OCP)</strong>:</li>
+<li>The serving tier can accept any model backend implementing <code>InferenceModelProtocol</code> without altering existing route or service code.</li>
+<li><strong>Liskov Substitution Principle (LSP)</strong>:</li>
+<li><code>OnnxModelWrapper</code> can seamlessly replace a native PyTorch <code>torch.nn.Module</code>. Both accept input tensors and return raw logits.</li>
+<li><strong>Interface Segregation Principle (ISP)</strong>:</li>
+<li><code>InferenceModelProtocol</code> requires only a callable contract <code>__call__(x: Tensor) -&gt; Tensor</code>. Consumers do not depend on heavyweight training or backward-pass methods.</li>
+<li><strong>Dependency Inversion Principle (DIP)</strong>:</li>
+<li><code>InferenceService</code> and route handlers depend upon the abstract <code>InferenceModelProtocol</code>, not concrete ONNX or PyTorch classes. The model instance is injected into <code>app.state</code> during application lifespan.</li>
+</ol>
+<h3 id="lifespan-state-management">Lifespan State Management</h3>
+<p>Application startup and teardown are managed through FastAPI's <code>@asynccontextmanager lifespan</code>:
+- <strong>Startup</strong>: Resolves <code>models/recyclenet.onnx</code>, initializes an <code>ort.InferenceSession</code> with optimized thread configurations (<code>inter_op_num_threads=2</code>, <code>intra_op_num_threads=2</code>), loads label mappings, and sets <code>app.state.model_ready = True</code>.
+- <strong>Teardown</strong>: Gracefully deallocates session resources, sets <code>model_ready = False</code>, and releases memory.</p>
+<hr />
+<h2 id="4-systems-programming-architecture-rust-axum-engine-rust_inference">4. Systems Programming Architecture: Rust Axum Engine (<code>rust_inference/</code>)</h2>
+<p>The Rust microservice delivers a cloud-native, high-throughput drop-in replacement for the Python API:</p>
+<h3 id="architecture-highlights">Architecture Highlights</h3>
+<ul>
+<li><strong>Axum Web Framework</strong>: Utilizes Axum's modular routing and extractors (<code>Multipart</code>, <code>Json</code>, <code>FormPayload</code>), matching FastAPI's parameter handling.</li>
+<li><strong><code>InferenceBackend</code> Trait</strong>: Thread-safe abstraction (<code>Send + Sync</code>) encapsulated in <code>Arc&lt;dyn InferenceBackend&gt;</code>:
+  <div class="highlight"><pre><span></span><code><span class="k">pub</span><span class="w"> </span><span class="k">trait</span><span class="w"> </span><span class="n">InferenceBackend</span><span class="p">:</span><span class="w"> </span><span class="nb">Send</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">Sync</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">image_bytes</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="p">[</span><span class="kt">u8</span><span class="p">])</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Result</span><span class="o">&lt;</span><span class="n">PredictionResult</span><span class="p">,</span><span class="w"> </span><span class="n">EngineError</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">run_tensor</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">tensor</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">Array4</span><span class="o">&lt;</span><span class="kt">f32</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Result</span><span class="o">&lt;</span><span class="p">(</span><span class="nb">Vec</span><span class="o">&lt;</span><span class="kt">f32</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="nb">Vec</span><span class="o">&lt;</span><span class="kt">f32</span><span class="o">&gt;</span><span class="p">),</span><span class="w"> </span><span class="n">EngineError</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">is_ready</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kt">bool</span><span class="p">;</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">classes</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kp">&amp;</span><span class="p">[</span><span class="nb">String</span><span class="p">];</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">model_path</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">Path</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></li>
+<li><strong>Zero-Copy Tensor Memory Pipeline</strong>:</li>
+<li>The raw HTTP request bytes are parsed into memory.</li>
+<li><code>image::load_from_memory</code> decodes the JPEG/PNG into a pixel buffer.</li>
+<li><code>imageops::resize</code> transforms dimensions to $224 \times 224$ via Bilinear interpolation.</li>
+<li>Normalized floating-point values are written directly into a contiguous 4D <code>ndarray::Array4&lt;f32&gt;</code> buffer with layout <code>(1, 3, 224, 224)</code>.</li>
+<li>The ndarray buffer is passed to ONNX Runtime via <code>ort::Value::from_array</code>, eliminating memory copies.</li>
+<li><strong>Predictable Latency</strong>: Free from garbage collection pauses and interpreter lock contention. Under high load, Rust maintains flat p99 tail latency.</li>
+</ul>
+<hr />
+<h2 id="5-preprocessing-numerical-parity-eliminating-train-serve-skew">5. Preprocessing &amp; Numerical Parity (Eliminating Train-Serve Skew)</h2>
+<p>A critical failure mode in production Computer Vision is <strong>Train-Serve Skew</strong>: subtle mathematical discrepancies between training transforms and serving inference (e.g., resizing algorithm differences, color channel ordering, rounding errors, normalization constants).</p>
+<p>RecycleNet-K8s prevents Train-Serve Skew by standardizing preprocessing mathematically across Python and Rust:</p>
+<h3 id="mathematical-transformation-pipeline">Mathematical Transformation Pipeline</h3>
+<p>$$\text{Raw Bytes} \xrightarrow{\text{Decode}} \mathbf{I}<em>{\text{RGB}} \xrightarrow{\text{Scale}} [0.0, 1.0] \xrightarrow{\text{Resize}} 224 \times 224 \xrightarrow{\text{Normalize}} \mathbf{T}</em>{(1, 3, 224, 224)}$$</p>
+<ol>
+<li><strong>Color Conversion</strong>: Raw compressed byte stream is converted to standard 8-bit RGB (eliminating alpha channels and grayscale variance).</li>
+<li><strong>Floating-Point Scaling</strong>: Integer pixel values $p \in [0, 255]$ are scaled to single-precision float $v = \frac{p}{255.0}$.</li>
+<li><strong>Spatial Resizing</strong>: Resized to exactly $224 \times 224$ pixels using standard <strong>Bilinear Interpolation</strong> (<code>torchvision.transforms.v2.Resize</code> and <code>image::imageops::FilterType::Triangle</code>).</li>
+<li><strong>Channel Normalization</strong>:
+   $$x_{c, i, j}^{\text{norm}} = \frac{x_{c, i, j} - \mu_c}{\sigma_c}$$
+   Where ImageNet standard constants are strictly enforced:
+   $$\mu = [0.485, 0.456, 0.406], \quad \sigma = [0.229, 0.224, 0.225]$$</li>
+<li><strong>Memory Layout Transformation</strong>:</li>
+<li>Python: Handled via PyTorch's native NCHW tensor layout.</li>
+<li>Rust: Transforms row-major interleaved HWC pixel buffers into contiguous planar NCHW via <code>ndarray::Array4&lt;f32&gt;::zeros((1, 3, 224, 224))</code>.</li>
+</ol>
+<h3 id="automated-numerical-parity-gate">Automated Numerical Parity Gate</h3>
+<p>Automated test suites (<code>benchmarks/benchmark_suite.py</code> and <code>tests/test_rust_parity.py</code>) enforce strict parity criteria across synthetic and real TrashNet test images:
+- <strong>Top-1 Class Agreement</strong>: Must equal <strong>100.0%</strong>.
+- <strong>Maximum Softmax Probability Difference ($\Delta_\max$)</strong>:
+  $$\Delta_\max = \max_{i \in \text{classes}} |P_{\text{Python}}(c_i) - P_{\text{Rust}}(c_i)| \le 1.0 \times 10^{-3}$$
+- Any discrepancy exceeding $10^{-3}$ immediately fails CI/CD, guaranteeing zero Train-Serve Skew in production.</p>
+<hr />
+<h2 id="6-scientific-benchmarking-methodology-performance-metrics">6. Scientific Benchmarking Methodology &amp; Performance Metrics</h2>
+<p>RecycleNet-K8s incorporates a dual benchmarking strategy combining an in-depth <strong>Python Scientific Harness</strong> and a production-grade <strong>k6 Load Generator</strong>:</p>
+<pre class="mermaid"><code>flowchart LR
+    subgraph Harness["Scientific Harness (benchmarks/benchmark_suite.py)"]
+        Runner["BenchmarkRunner"] --&gt;|Generate| SyntheticSamples["10+ Calibrated Synthetic Images"]
+        Runner --&gt;|Benchmark Target Protocol| InProcess["InProcessFastApiTarget (FastAPI)"]
+        Runner --&gt;|Benchmark Target Protocol| HttpTargetPy["HttpBenchmarkTarget (:8000)"]
+        Runner --&gt;|Benchmark Target Protocol| HttpTargetRust["HttpBenchmarkTarget (:8080)"]
+        Runner --&gt;|Compute Statistics| Percentiles["Numpy Percentiles (p50, p95, p99)&lt;br/&gt;Throughput (RPS)&lt;br/&gt;Resident Memory (RSS MB)"]
+        Runner --&gt;|Evaluate| ParityCheck["Numerical Parity &amp; Probability Deltas"]
+        Runner --&gt;|Render| MarkdownReport["Scientific Markdown Comparison Table"]
+    end</code></pre>
+<h3 id="measured-performance-dimensions">Measured Performance Dimensions</h3>
+<ol>
+<li><strong>Latency Percentiles</strong>:</li>
+<li><strong>p50 (Median)</strong>: Typical user response time.</li>
+<li><strong>p95</strong>: Latency experienced by the 95th percentile under standard queue depth.</li>
+<li><strong>p99 (Tail Latency)</strong>: Latency under worst-case queue contention and GC impact.</li>
+<li><strong>Throughput (Requests Per Second - RPS)</strong>: Maximum sustainable request volume before error onset.</li>
+<li><strong>Resident Memory Footprint (RSS MB)</strong>: Physical RAM occupied by the container process.</li>
+<li><strong>Container Image Footprint</strong>: Uncompressed container image size transferred across registries.</li>
+</ol>
+<h3 id="production-load-testing-with-k6-benchmarksk6_load_testjs">Production Load Testing with <code>k6</code> (<code>benchmarks/k6_load_test.js</code>)</h3>
+<p>The <code>k6</code> script simulates realistic user traffic across 4 distinct operational stages:
+1. <strong>Stage 1: Warm-up</strong> (15s @ 10 Virtual Users) — JIT warmup, session initialization, DNS caching.
+2. <strong>Stage 2: Ramp-up</strong> (30s @ 30 Virtual Users) — Increasing concurrency to test connection pooling.
+3. <strong>Stage 3: Peak Load</strong> (45s @ 60 Virtual Users) — Stress testing queue depth and CPU saturation.
+4. <strong>Stage 4: Cooldown</strong> (15s @ 0 Virtual Users) — Connection draining and resource deallocation.</p>
+<h4 id="strict-service-level-objectives-slos">Strict Service Level Objectives (SLOs)</h4>
+<ul>
+<li><code>http_req_failed</code>: <code>&lt; 1%</code> (Less than 1 failure per 100 requests).</li>
+<li><code>http_req_duration</code>: <code>p(95) &lt; 300ms</code>, <code>p(99) &lt; 600ms</code>.</li>
+<li><code>inference_latency_ms</code>: <code>p(95) &lt; 300ms</code>, <code>p(99) &lt; 600ms</code>.</li>
+<li><code>inference_success_rate</code>: <code>&gt; 99%</code>.</li>
+</ul>
+<hr />
+<h2 id="7-edgeiot-cloud-native-deployment-strategy">7. Edge/IoT &amp; Cloud-Native Deployment Strategy</h2>
+<h3 id="a-edge-smart-waste-bin-architecture">A. Edge / Smart Waste Bin Architecture</h3>
+<p>In resource-constrained deployments (such as solar-powered smart waste receptacles or embedded NVIDIA Jetson / Raspberry Pi 5 gateways):
+- <strong>Hardware Profile</strong>: 512 MB – 1 GB total system RAM, Quad-Core ARM Cortex-A76.
+- <strong>Serving Selection</strong>: <strong>Rust Axum Microservice</strong>.
+- <strong>Advantages</strong>:
+  - Requires less than <strong>45 MB RSS</strong>, leaving 90%+ system RAM for operating system and camera drivers.
+  - Zero Python runtime dependencies; runs as a single self-contained binary or lightweight <code>&lt;40 MB</code> container.
+  - Sub-50ms cold boot allows smart bins to wake from deep sleep on ultrasonic motion detection, classify waste in &lt;15ms, and sleep immediately.</p>
+<h3 id="b-cloud-native-kubernetes-deployment">B. Cloud-Native Kubernetes Deployment</h3>
+<p>In clustered cloud environments (Minikube / Google Kubernetes Engine):
+- <strong>High Availability</strong>: Minimum 2 replicas configured with anti-affinity across nodes.
+- <strong>Resource Limits &amp; Requests</strong>:
+  - Python Pods: <code>requests.memory: 512Mi</code>, <code>limits.memory: 1Gi</code>, <code>requests.cpu: 250m</code>, <code>limits.cpu: 1000m</code>.
+  - Rust Pods: <code>requests.memory: 64Mi</code>, <code>limits.memory: 128Mi</code>, <code>requests.cpu: 100m</code>, <code>limits.cpu: 500m</code>.
+  - <em>Result</em>: The Rust tier provides <strong>8x higher pod density per Kubernetes node</strong>, cutting infrastructure cluster costs dramatically.
+- <strong>Probes</strong>:
+  - <code>livenessProbe</code>: <code>GET /healthz</code> (Checks if process is running).
+  - <code>readinessProbe</code>: <code>GET /ready</code> (Verifies ONNX model is loaded into RAM before receiving traffic).
+- <strong>Horizontal Pod Autoscaling (HPA)</strong>:
+  - Scaled from 2 to 5 replicas based on CPU utilization exceeding 70%.
+  - Rust's instantaneous startup time ensures new pods become <code>Ready</code> instantly, absorbing burst traffic without queue latency spikes.</p>
+<hr />
+<h2 id="8-architectural-summary-matrix">8. Architectural Summary Matrix</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Metric / Feature</th>
+<th style="text-align: center;">Python FastAPI (<code>:8000</code>)</th>
+<th style="text-align: center;">Rust Axum (<code>:8080</code>)</th>
+<th style="text-align: center;">Delta / Gain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Median Latency (p50)</strong></td>
+<td style="text-align: center;"><code>~12–18 ms</code></td>
+<td style="text-align: center;"><code>~3–6 ms</code></td>
+<td style="text-align: center;"><strong>~3x Faster</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tail Latency (p99)</strong></td>
+<td style="text-align: center;"><code>~45–80 ms</code></td>
+<td style="text-align: center;"><code>~8–14 ms</code></td>
+<td style="text-align: center;"><strong>~5x More Predictable</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Max Throughput (RPS)</strong></td>
+<td style="text-align: center;"><code>~80–120 req/s</code></td>
+<td style="text-align: center;"><code>~450–700 req/s</code></td>
+<td style="text-align: center;"><strong>~5x Higher Throughput</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Resident Memory (RSS)</strong></td>
+<td style="text-align: center;"><code>~380 MB</code></td>
+<td style="text-align: center;"><code>~38 MB</code></td>
+<td style="text-align: center;"><strong>10x Less RAM</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Docker Image Size</strong></td>
+<td style="text-align: center;"><code>~1,200 MB</code></td>
+<td style="text-align: center;"><code>~38 MB</code></td>
+<td style="text-align: center;"><strong>31x Smaller Container</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Pod Startup Time</strong></td>
+<td style="text-align: center;"><code>~2.8 s</code></td>
+<td style="text-align: center;"><code>~0.04 s</code></td>
+<td style="text-align: center;"><strong>70x Faster Cold Start</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Train-Serve Skew</strong></td>
+<td style="text-align: center;">Baseline</td>
+<td style="text-align: center;">$L_\infty &lt; 10^{-3}$</td>
+<td style="text-align: center;"><strong>Zero Skew Verified</strong></td>
+</tr>
+</tbody>
+</table>
+<p>This dual-tier architecture demonstrates how modern MLOps pipelines can leverage Python for training, experimentation, and cloud serving, while deploying systems programming languages (Rust) for performance-critical edge and high-density microservices.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1856 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="API documentation and reference for RecycleNet-K8s">
+      
+      
+        <meta name="author" content="LeoYan">
+      
+      
+      
+        <link rel="prev" href="../k8s_orchestration/">
+      
+      
+        <link rel="next" href="../gcp_cloud_run_deployment_guide/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>CI/CD Architecture - RecycleNet MLOps Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#continuous-devsecops-gcp-cloud-deployment" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="RecycleNet MLOps Docs" class="md-header__button md-logo" aria-label="RecycleNet MLOps Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RecycleNet MLOps Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CI/CD Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/PilotLeoYan/RecycleNet-K8s" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RecycleNet-K8s
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture & MLOps
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../serving_architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Serving Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../k8s_orchestration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Kubernetes Orchestration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  DevSecOps & Cloud Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/components/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="RecycleNet MLOps Docs" class="md-nav__button md-logo" aria-label="RecycleNet MLOps Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RecycleNet MLOps Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PilotLeoYan/RecycleNet-K8s" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RecycleNet-K8s
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & MLOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../serving_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serving Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../k8s_orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DevSecOps & Cloud Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    DevSecOps & Cloud Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-executive-summary-devsecops-philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Executive Summary &amp; DevSecOps Philosophy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-end-to-end-devsecops-architecture-pipeline-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. End-to-End DevSecOps Architecture &amp; Pipeline Topology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. End-to-End DevSecOps Architecture &amp; Pipeline Topology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci-pipeline-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI Pipeline Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cd-pipeline-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CD Pipeline Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-5-ci-quality-security-gates-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The 5 CI Quality &amp; Security Gates in Detail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The 5 CI Quality &amp; Security Gates in Detail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gate-1-astral-sh-setup-uv-astral-shsetup-uv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 1: Astral-sh Setup-uv (astral-sh/setup-uv)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-2-ruff-code-formatting-linting-ruff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 2: Ruff Code Formatting &amp; Linting (ruff)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-3-mypy-strict-static-type-verification-mypy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 3: Mypy Strict Static Type Verification (mypy)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-4-bandit-ast-security-analysis-bandit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 4: Bandit AST Security Analysis (bandit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-5-pytest-unit-integration-coverage-pytest-cov" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 5: Pytest Unit &amp; Integration Coverage (pytest-cov)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-keyless-workload-identity-federation-github-actions-gcp-oidc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Keyless Workload Identity Federation (GitHub Actions ↔ GCP OIDC)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Keyless Workload Identity Federation (GitHub Actions ↔ GCP OIDC)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keyless-token-exchange-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keyless Token Exchange Sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#github-actions-oidc-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GitHub Actions OIDC Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-immutable-container-versioning-with-google-artifact-registry-gar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Immutable Container Versioning with Google Artifact Registry (GAR)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Immutable Container Versioning with Google Artifact Registry (GAR)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tagging-convention-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tagging Convention &amp; Traceability
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-serverless-deployment-google-cloud-run-vs-gke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Serverless Deployment: Google Cloud Run vs GKE
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Serverless Deployment: Google Cloud Run vs GKE">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#comparative-architecture-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparative Architecture Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud-run-production-deployment-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Run Production Deployment Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameter-rationale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameter Rationale:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-offline-devsecops-validation-simulation-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Offline DevSecOps Validation &amp; Simulation CLI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Offline DevSecOps Validation &amp; Simulation CLI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-cli-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available CLI Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-supply-chain-security-cve-version-patches-codeql-cwe-020-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Supply Chain Security, CVE Version Patches &amp; CodeQL CWE-020 Hardening
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Supply Chain Security, CVE Version Patches &amp; CodeQL CWE-020 Hardening">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-transitive-dependency-cve-remediation-tooluv-override-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Transitive Dependency CVE Remediation ([tool.uv] override-dependencies)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-codeql-sast-hardening-cwe-020-incomplete-url-substring-sanitization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 CodeQL SAST Hardening (CWE-020: Incomplete URL Substring Sanitization)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp_cloud_run_deployment_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Cloud Run Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-executive-summary-devsecops-philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Executive Summary &amp; DevSecOps Philosophy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-end-to-end-devsecops-architecture-pipeline-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. End-to-End DevSecOps Architecture &amp; Pipeline Topology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. End-to-End DevSecOps Architecture &amp; Pipeline Topology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci-pipeline-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI Pipeline Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cd-pipeline-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CD Pipeline Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-5-ci-quality-security-gates-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The 5 CI Quality &amp; Security Gates in Detail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The 5 CI Quality &amp; Security Gates in Detail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gate-1-astral-sh-setup-uv-astral-shsetup-uv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 1: Astral-sh Setup-uv (astral-sh/setup-uv)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-2-ruff-code-formatting-linting-ruff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 2: Ruff Code Formatting &amp; Linting (ruff)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-3-mypy-strict-static-type-verification-mypy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 3: Mypy Strict Static Type Verification (mypy)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-4-bandit-ast-security-analysis-bandit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 4: Bandit AST Security Analysis (bandit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-5-pytest-unit-integration-coverage-pytest-cov" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate 5: Pytest Unit &amp; Integration Coverage (pytest-cov)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-keyless-workload-identity-federation-github-actions-gcp-oidc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Keyless Workload Identity Federation (GitHub Actions ↔ GCP OIDC)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Keyless Workload Identity Federation (GitHub Actions ↔ GCP OIDC)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keyless-token-exchange-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keyless Token Exchange Sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#github-actions-oidc-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GitHub Actions OIDC Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-immutable-container-versioning-with-google-artifact-registry-gar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Immutable Container Versioning with Google Artifact Registry (GAR)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Immutable Container Versioning with Google Artifact Registry (GAR)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tagging-convention-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tagging Convention &amp; Traceability
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-serverless-deployment-google-cloud-run-vs-gke" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Serverless Deployment: Google Cloud Run vs GKE
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Serverless Deployment: Google Cloud Run vs GKE">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#comparative-architecture-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparative Architecture Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud-run-production-deployment-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Run Production Deployment Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameter-rationale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameter Rationale:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-offline-devsecops-validation-simulation-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Offline DevSecOps Validation &amp; Simulation CLI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Offline DevSecOps Validation &amp; Simulation CLI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-cli-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available CLI Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-supply-chain-security-cve-version-patches-codeql-cwe-020-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Supply Chain Security, CVE Version Patches &amp; CodeQL CWE-020 Hardening
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Supply Chain Security, CVE Version Patches &amp; CodeQL CWE-020 Hardening">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-transitive-dependency-cve-remediation-tooluv-override-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Transitive Dependency CVE Remediation ([tool.uv] override-dependencies)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-codeql-sast-hardening-cwe-020-incomplete-url-substring-sanitization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 CodeQL SAST Hardening (CWE-020: Incomplete URL Substring Sanitization)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="continuous-devsecops-gcp-cloud-deployment">🛡️ Continuous DevSecOps &amp; GCP Cloud Deployment</h1>
+<h2 id="1-executive-summary-devsecops-philosophy">1. Executive Summary &amp; DevSecOps Philosophy</h2>
+<p>In enterprise MLOps architectures, developing high-performing computer vision models and local containerized endpoints represents only the first milestone of the product lifecycle. To achieve reliable production maturity, systems must embed <strong>DevSecOps</strong> practices—shifting quality assurance, security auditing, and cloud governance left into automated pipelines.</p>
+<p><strong>RecycleNet-K8s Phase 4</strong> establishes an automated, zero-trust Continuous Integration and Continuous Deployment (CI/CD) foundation targeting <strong>Google Cloud Platform (GCP)</strong>. The architecture guarantees:</p>
+<ul>
+<li><strong>Automated Quality &amp; Security Gates:</strong> Every pull request is verified against strict code formatting, comprehensive type checking, AST-based security vulnerability analysis, and enforced test coverage thresholds.</li>
+<li><strong>Keyless Cloud Authentication:</strong> Zero static JSON service account keys. Authentication between GitHub Actions and GCP is handled entirely through short-lived cryptographic tokens via <strong>OpenID Connect (OIDC)</strong> and <strong>Workload Identity Federation</strong>.</li>
+<li><strong>Immutable Container Artifacts:</strong> Container builds are uniquely and immutably tagged with commit SHA identifiers (<code>sha-${{ github.sha }}</code>) in <strong>Google Artifact Registry (GAR)</strong>, eliminating configuration drift and enabling deterministic rollbacks.</li>
+<li><strong>Serverless Cloud Run Deployment:</strong> Production inference workloads deploy serverlessly to <strong>Google Cloud Run</strong> with managed TLS, granular resource limits (<code>1Gi</code> RAM, <code>1</code> CPU), and dynamic auto-scaling from 1 warm instance up to 5 instances under load.</li>
+<li><strong>Local Simulation &amp; Offline Verification:</strong> A dedicated orchestration CLI validates workflow schemas, security constraints, and deployment scenarios offline without incurring cloud egress costs.</li>
+</ul>
+<hr />
+<h2 id="2-end-to-end-devsecops-architecture-pipeline-topology">2. End-to-End DevSecOps Architecture &amp; Pipeline Topology</h2>
+<p>The continuous lifecycle is split into two specialized GitHub Actions workflows:</p>
+<ol>
+<li><strong>Continuous Integration (<code>.github/workflows/ci.yaml</code> / <code>ci.yml</code>):</strong> Runs on every pull request and push to <code>main</code> to validate quality, security, and functional correctness.</li>
+<li><strong>Continuous Deployment (<code>.github/workflows/cd.yaml</code>):</strong> Runs automatically upon merging to <code>main</code>, executing keyless GCP federation, container compilation, image registry push, and Cloud Run service rollout.</li>
+</ol>
+<h3 id="ci-pipeline-workflow">CI Pipeline Workflow</h3>
+<pre class="mermaid"><code>flowchart TD
+    Trigger(["Git Push / Pull Request"]) --&gt; Checkout["1. Checkout Repository&lt;br/&gt;actions/checkout@v4"]
+    Checkout --&gt; SetupUV["2. Setup Python Toolchain&lt;br/&gt;astral-sh/setup-uv"]
+    SetupUV --&gt; InstallDeps["3. Deterministic Sync&lt;br/&gt;uv sync --frozen --all-groups"]
+
+    subgraph QualityGates["5 Strict Quality &amp; Security Gates"]
+        InstallDeps --&gt; RuffFmt["Gate 1: Format Check&lt;br/&gt;ruff format --check ."]
+        RuffFmt --&gt; RuffLint["Gate 2: Linter Inspection&lt;br/&gt;ruff check ."]
+        RuffLint --&gt; Mypy["Gate 3: Strict Typing&lt;br/&gt;mypy ."]
+        Mypy --&gt; Bandit["Gate 4: Security AST Scan&lt;br/&gt;bandit -r src/"]
+        Bandit --&gt; Pytest["Gate 5: Pytest &amp; Coverage&lt;br/&gt;pytest --cov=src --cov-fail-under=80"]
+    end
+
+    Pytest --&gt; Success(["CI Status: PASSED ✅&lt;br/&gt;Ready for Peer Review / Merge"])</code></pre>
+<h3 id="cd-pipeline-workflow">CD Pipeline Workflow</h3>
+<pre class="mermaid"><code>flowchart TD
+    MergeMain(["Merge Commit to 'main'"]) --&gt; CIValidation{"CI Quality Gates&lt;br/&gt;Passed?"}
+    CIValidation -- No --&gt; Abort(["Abort Deployment ❌"])
+    CIValidation -- Yes --&gt; OIDCAuth["1. Keyless GCP OIDC Auth&lt;br/&gt;google-github-actions/auth&lt;br/&gt;Workload Identity Federation"]
+
+    OIDCAuth --&gt; GARLogin["2. Docker Authentication&lt;br/&gt;Google Artifact Registry (GAR)"]
+    GARLogin --&gt; MultiStageBuild["3. Build Container Image&lt;br/&gt;Dockerfile multi-stage (uv builder)"]
+    MultiStageBuild --&gt; TagSHA["4. Tag Immutable Artifact&lt;br/&gt;IMAGE:sha-${{ github.sha }}"]
+    TagSHA --&gt; PushGAR["5. Push to GAR Registry&lt;br/&gt;us-central1-docker.pkg.dev/..."]
+    PushGAR --&gt; DeployCloudRun["6. Rolling Deploy to Cloud Run&lt;br/&gt;--image GAR_IMAGE&lt;br/&gt;--memory 1Gi --cpu 1&lt;br/&gt;--min-instances 1 --max-instances 5"]
+    DeployCloudRun --&gt; HealthCheck{"7. Cloud Run Startup&lt;br/&gt;&amp; Readiness Probe"}
+    HealthCheck -- Healthy --&gt; LiveProduction(["Live Production Endpoint 🚀&lt;br/&gt;Zero-Downtime Traffic Migration"])</code></pre>
+<hr />
+<h2 id="3-the-5-ci-quality-security-gates-in-detail">3. The 5 CI Quality &amp; Security Gates in Detail</h2>
+<p>To ensure code stability, prevent regression, and enforce clean architecture, the CI pipeline executes five sequential verification gates:</p>
+<pre class="mermaid"><code>flowchart LR
+    G1["1. astral-sh/setup-uv&lt;br/&gt;Instant Cached Toolchain"] --&gt; G2["2. Ruff Format &amp; Lint&lt;br/&gt;PEP 8 &amp; Clean Code"]
+    G2 --&gt; G3["3. Mypy Strict&lt;br/&gt;100% Static Types"]
+    G3 --&gt; G4["4. Bandit AST&lt;br/&gt;Security Analysis"]
+    G4 --&gt; G5["5. Pytest Coverage&lt;br/&gt;&amp;ge; 80% Threshold"]</code></pre>
+<h3 id="gate-1-astral-sh-setup-uv-astral-shsetup-uv">Gate 1: Astral-sh Setup-uv (<code>astral-sh/setup-uv</code>)</h3>
+<ul>
+<li><strong>Role:</strong> High-performance dependency resolution and virtual environment bootstrapping.</li>
+<li><strong>Mechanism:</strong> Powered by Rust, <code>uv</code> installs and synchronizes dependencies in milliseconds. The workflow caches wheel artifacts using <code>cache-dependency-glob: "uv.lock"</code>.</li>
+<li><strong>Command:</strong>
+  <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--frozen<span class="w"> </span>--all-groups<span class="w"> </span>--extra<span class="w"> </span>cpu
+</code></pre></div></li>
+<li><strong>Benefit:</strong> Guarantees bitwise reproducibility across local development workstations and remote GitHub Actions runners.</li>
+</ul>
+<h3 id="gate-2-ruff-code-formatting-linting-ruff">Gate 2: Ruff Code Formatting &amp; Linting (<code>ruff</code>)</h3>
+<ul>
+<li><strong>Role:</strong> Comprehensive syntax verification, import classification, and PEP 8 formatting.</li>
+<li><strong>Configuration:</strong> Adheres to strict 88-character line length (<code>line-length = 88</code>), Py314 target conventions, and import sorting (<code>select = ["E", "F", "I", "W", "UP"]</code>).</li>
+<li><strong>Commands:</strong>
+  <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>--check<span class="w"> </span>.
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>.
+</code></pre></div></li>
+<li><strong>Benefit:</strong> Eliminates stylistic discrepancies and enforces idiomatic Python patterns before code review.</li>
+</ul>
+<h3 id="gate-3-mypy-strict-static-type-verification-mypy">Gate 3: Mypy Strict Static Type Verification (<code>mypy</code>)</h3>
+<ul>
+<li><strong>Role:</strong> Compile-time validation of types across domain models, configuration schemas, and pipeline components.</li>
+<li><strong>Configuration:</strong> Flags untyped function definitions (<code>disallow_untyped_defs = true</code>), warns on unreachable branches (<code>warn_unreachable = true</code>), and prohibits arbitrary dynamic typing.</li>
+<li><strong>Command:</strong>
+  <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>.
+</code></pre></div></li>
+<li><strong>Benefit:</strong> Prevents insidious runtime crashes such as <code>AttributeError</code> or <code>TypeError</code> before code reaches containerization.</li>
+</ul>
+<h3 id="gate-4-bandit-ast-security-analysis-bandit">Gate 4: Bandit AST Security Analysis (<code>bandit</code>)</h3>
+<ul>
+<li><strong>Role:</strong> Static Application Security Testing (SAST) analyzing Python Abstract Syntax Trees (AST).</li>
+<li><strong>Configuration:</strong> Defined in <code>pyproject.toml</code>, scanning <code>src/</code> while ignoring false-positive assertion checks (<code>B101</code>) and pseudo-random generators in non-cryptographic ML trials (<code>B311</code>).</li>
+<li><strong>Command:</strong>
+  <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>bandit<span class="w"> </span>-r<span class="w"> </span>src/<span class="w"> </span>-c<span class="w"> </span>pyproject.toml
+</code></pre></div></li>
+<li><strong>Benefit:</strong> Proactively discovers high-risk vulnerabilities including hardcoded secrets, shell injection vulnerabilities, unsafe deserialization, and improper socket bindings.</li>
+</ul>
+<h3 id="gate-5-pytest-unit-integration-coverage-pytest-cov">Gate 5: Pytest Unit &amp; Integration Coverage (<code>pytest-cov</code>)</h3>
+<ul>
+<li><strong>Role:</strong> Functional correctness verification across data ingestion, model building, ONNX export, REST API endpoints, and Kubernetes orchestration logic.</li>
+<li><strong>Enforcement:</strong> Enforces an explicit 80%+ coverage threshold (<code>fail_under = 80</code>). If test coverage drops below 80%, the CI pipeline immediately fails, blocking PR merge.</li>
+<li><strong>Command:</strong>
+  <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/<span class="w"> </span>-v<span class="w"> </span>--durations<span class="o">=</span><span class="m">10</span><span class="w"> </span>--cov<span class="o">=</span>src<span class="w"> </span>--cov-fail-under<span class="o">=</span><span class="m">80</span>
+</code></pre></div></li>
+<li><strong>Benefit:</strong> Assures that all critical algorithmic logic, edge-case exception handling, and API serialization paths are validated against regressions.</li>
+</ul>
+<hr />
+<h2 id="4-keyless-workload-identity-federation-github-actions-gcp-oidc">4. Keyless Workload Identity Federation (GitHub Actions ↔ GCP OIDC)</h2>
+<p>Traditional CI/CD setups rely on long-lived Service Account JSON keys stored in repository secrets. This represents a significant security liability:
+- Keys do not automatically expire.
+- Keys are susceptible to leakage or insider exfiltration.
+- Secret rotation requires manual effort and risk of downtime.</p>
+<p>RecycleNet adopts <strong>OpenID Connect (OIDC)</strong> and <strong>Google Cloud Workload Identity Federation</strong>, establishing a cryptographic trust exchange between GitHub's OIDC Provider and GCP Security Token Service (STS).</p>
+<h3 id="keyless-token-exchange-sequence">Keyless Token Exchange Sequence</h3>
+<pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    participant GHA as GitHub Actions Runner
+    participant GH_OIDC as GitHub OIDC Provider&lt;br/&gt;(token.actions.githubusercontent.com)
+    participant GCP_STS as GCP Security Token Service&lt;br/&gt;(sts.googleapis.com)
+    participant GCP_IAM as GCP IAM Service Account&lt;br/&gt;(github-deployer@...)
+    participant GCP_SVC as Google Cloud Services&lt;br/&gt;(Artifact Registry &amp; Cloud Run)
+
+    GHA-&gt;&gt;GH_OIDC: Request OIDC JWT Token (audience: gcp-wip)
+    GH_OIDC--&gt;&gt;GHA: Signed OIDC JWT Token
+    GHA-&gt;&gt;GCP_STS: Exchange Token (AssumeRoleWithWebIdentity)
+    Note over GCP_STS: Validates JWT signature,&lt;br/&gt;issuer &amp; repo claim assertions&lt;br/&gt;(e.g. repository == 'PilotLeoYan/RecycleNet-K8s')
+    GCP_STS--&gt;&gt;GHA: Short-lived Federated GCP Access Token
+    GHA-&gt;&gt;GCP_IAM: Impersonate Service Account
+    Note over GCP_IAM: Verifies roles/iam.workloadIdentityUser&lt;br/&gt;permission binding
+    GCP_IAM--&gt;&gt;GHA: Short-lived OAuth2 Access Token (valid for 1 hour)
+    GHA-&gt;&gt;GCP_SVC: Authenticated Deployment Requests&lt;br/&gt;(Push Docker image to GAR &amp; update Cloud Run)
+    GCP_SVC--&gt;&gt;GHA: Deployment Succeeded (HTTP 200 OK)</code></pre>
+<h3 id="github-actions-oidc-configuration">GitHub Actions OIDC Configuration</h3>
+<p>In <code>.github/workflows/cd.yaml</code>, permissions require <code>id-token: write</code> to issue OIDC credentials:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">permissions</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read</span>
+<span class="w">  </span><span class="nt">id-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span>
+
+<span class="nt">steps</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Authenticate to Google Cloud via OIDC</span>
+<span class="w">    </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">google-github-actions/auth@v2</span>
+<span class="w">    </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">workload_identity_provider</span><span class="p">:</span><span class="w"> </span><span class="s">"projects/1234567890/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider"</span>
+<span class="w">      </span><span class="nt">service_account</span><span class="p">:</span><span class="w"> </span><span class="s">"github-deployer@recyclenet-prod.iam.gserviceaccount.com"</span>
+<span class="w">      </span><span class="nt">token_format</span><span class="p">:</span><span class="w"> </span><span class="s">"access_token"</span>
+</code></pre></div>
+<hr />
+<h2 id="5-immutable-container-versioning-with-google-artifact-registry-gar">5. Immutable Container Versioning with Google Artifact Registry (GAR)</h2>
+<p>To maintain a secure software supply chain, all container artifacts produced by the CD pipeline are published to <strong>Google Artifact Registry (GAR)</strong>.</p>
+<h3 id="tagging-convention-traceability">Tagging Convention &amp; Traceability</h3>
+<p>Using mutable tags such as <code>:latest</code> in production environments introduces substantial risk:
+- It obscures which Git commit generated the running image.
+- Rollbacks are non-deterministic because the tag points to different image digests over time.
+- Multi-container clusters may run heterogeneous revisions under the same tag.</p>
+<p>RecycleNet enforces <strong>immutable commit SHA tagging</strong>:</p>
+<p>$$\text{Image Identifier} = \text{GAR_LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/recyclenet-api:sha-}\${ \text{GITHUB_SHA} }$$</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Tagging with full Git commit SHA</span>
+docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>us-central1-docker.pkg.dev/recyclenet-prod/recyclenet-registry/recyclenet-api:sha-<span class="si">${</span><span class="p">{ github.sha </span><span class="si">}</span><span class="o">}</span><span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span>us-central1-docker.pkg.dev/recyclenet-prod/recyclenet-registry/recyclenet-api:sha-<span class="si">${</span><span class="p">{ github.sha </span><span class="si">}</span><span class="o">}</span>
+</code></pre></div>
+<p>Every deployed container image can be audited directly back to its exact Git commit, author, test logs, and PR approval.</p>
+<hr />
+<h2 id="6-serverless-deployment-google-cloud-run-vs-gke">6. Serverless Deployment: Google Cloud Run vs GKE</h2>
+<p>RecycleNet supports dual production deployment targets: <strong>Google Cloud Run</strong> (managed serverless) and <strong>Google Kubernetes Engine (GKE)</strong> (declarative cluster).</p>
+<h3 id="comparative-architecture-analysis">Comparative Architecture Analysis</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Architectural Criterion</th>
+<th style="text-align: left;">Google Cloud Run (Serverless)</th>
+<th style="text-align: left;">Google Kubernetes Engine (GKE)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Compute Paradigm</strong></td>
+<td style="text-align: left;">Managed serverless container execution</td>
+<td style="text-align: left;">Managed Kubernetes cluster (nodes/pods)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Operational Overhead</strong></td>
+<td style="text-align: left;">Near zero (no nodes, OS updates, or control plane)</td>
+<td style="text-align: left;">Moderate to high (cluster upgrades, daemonsets, CNI)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Autoscaling Mechanics</strong></td>
+<td style="text-align: left;">Sub-second request-driven container scaling</td>
+<td style="text-align: left;">HPA + Cluster Autoscaler (node provisioning latency)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Idle Cost</strong></td>
+<td style="text-align: left;">Zero (scales to zero when traffic stops)</td>
+<td style="text-align: left;">Fixed baseline costs for control plane and node pool</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ingress &amp; Networking</strong></td>
+<td style="text-align: left;">Managed HTTPS, automatic TLS certificates, DDoS mitigation</td>
+<td style="text-align: left;">Requires Ingress controller (NGINX), Cert-Manager, DNS</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Ideal Workload Profile</strong></td>
+<td style="text-align: left;">REST inference APIs, intermittent or spiky demand</td>
+<td style="text-align: left;">High-throughput distributed pipelines, GPU training</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cloud-run-production-deployment-parameters">Cloud Run Production Deployment Parameters</h3>
+<p>For Phase 4 serverless inference, the CD pipeline deploys the container with strict resource boundaries:</p>
+<div class="highlight"><pre><span></span><code>gcloud<span class="w"> </span>run<span class="w"> </span>deploy<span class="w"> </span>recyclenet-api<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--image<span class="o">=</span><span class="s2">"us-central1-docker.pkg.dev/recyclenet-prod/recyclenet-registry/recyclenet-api:sha-</span><span class="si">${</span><span class="p">{ github.sha </span><span class="si">}</span><span class="s2">}"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--region<span class="o">=</span><span class="s2">"us-central1"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--platform<span class="o">=</span><span class="s2">"managed"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--port<span class="o">=</span><span class="m">8000</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--memory<span class="o">=</span>1Gi<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cpu<span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--min-instances<span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--max-instances<span class="o">=</span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--concurrency<span class="o">=</span><span class="m">80</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--allow-unauthenticated
+</code></pre></div>
+<h3 id="parameter-rationale">Parameter Rationale:</h3>
+<ul>
+<li><code>--port=8000</code>: Matches the internal FastAPI port exposed in the multi-stage Dockerfile.</li>
+<li><code>--memory=1Gi</code>: Provides ample headroom for loading ONNX Runtime CPU inference engines and PyTorch image transforms without triggering out-of-memory errors.</li>
+<li><code>--cpu=1</code>: Allocates a dedicated virtual CPU core, providing deterministic request latency.</li>
+<li><code>--min-instances=1</code>: Keeps one warm instance active 24/7 to completely eliminate cold-start latency for interactive users.</li>
+<li><code>--max-instances=5</code>: Sets a strict upper boundary to prevent runaway cloud bills during unexpected denial-of-service or load spikes.</li>
+<li><code>--concurrency=80</code>: Allows up to 80 simultaneous requests per container instance before provisioning additional replicas.</li>
+</ul>
+<hr />
+<h2 id="7-offline-devsecops-validation-simulation-cli">7. Offline DevSecOps Validation &amp; Simulation CLI</h2>
+<p>To facilitate verification of DevSecOps pipelines and deployment specifications on air-gapped development machines without active GCP access, RecycleNet provides an offline simulation CLI:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.devsecops.orchestrator
+</code></pre></div>
+<h3 id="available-cli-options">Available CLI Options</h3>
+<div class="highlight"><pre><span></span><code>Options:
+  --help          Show help message and exit
+  --ci-only       Execute only CI quality gate rule validation
+  --cd-only       Execute only CD GCP OIDC and deployment rule validation
+  --format-md     Export execution summary as GitHub Flavored Markdown
+</code></pre></div>
+<h3 id="verification-capabilities">Verification Capabilities</h3>
+<ul>
+<li><strong>Static Workflow Linting:</strong> Parses <code>.github/workflows/ci.yaml</code> and <code>.github/workflows/cd.yaml</code> to ensure all 5 quality gates and OIDC actions are configured correctly.</li>
+<li><strong>OIDC Claims Simulation:</strong> Simulates the STS cryptographic token exchange, verifying subject claim restrictions (<code>repo:PilotLeoYan/RecycleNet-K8s:ref:refs/heads/main</code>).</li>
+<li><strong>Cloud Run Scaling Trajectory:</strong> Computes instance scaling trajectories across simulated request traffic patterns, verifying min/max boundaries and concurrency quotas.</li>
+</ul>
+<hr />
+<h2 id="8-supply-chain-security-cve-version-patches-codeql-cwe-020-hardening">8. Supply Chain Security, CVE Version Patches &amp; CodeQL CWE-020 Hardening</h2>
+<p>Beyond runtime container hardening, Phase 4 enforces proactive software supply chain security across both transitive Python dependencies (<code>pyproject.toml</code> and <code>uv.lock</code>) and static application security testing (<strong>GitHub Advanced Security / CodeQL</strong>).</p>
+<h3 id="81-transitive-dependency-cve-remediation-tooluv-override-dependencies">8.1 Transitive Dependency CVE Remediation (<code>[tool.uv] override-dependencies</code>)</h3>
+<p>To eliminate vulnerabilities introduced by upstream transitive dependencies (such as MLflow, GitPython, and OpenTelemetry), <code>pyproject.toml</code> pins hardened floor versions via <code>[tool.uv] override-dependencies</code> and locks their SHA-256 digests in <code>uv.lock</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[tool.uv]</span>
+<span class="n">package</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">override-dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">"cryptography&gt;=50.0.0"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"gitpython&gt;=3.2.1"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"graphql-core&gt;=3.2.12"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"opentelemetry-api&gt;=1.45.1"</span><span class="p">,</span>
+<span class="p">]</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Package</th>
+<th style="text-align: center;">Previous Version</th>
+<th style="text-align: center;">Patched Version (<code>uv.lock</code>)</th>
+<th style="text-align: center;">Override Constraint</th>
+<th style="text-align: left;">Severity &amp; Vulnerability Remediated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>gitpython</code></strong></td>
+<td style="text-align: center;"><code>3.1.62</code></td>
+<td style="text-align: center;"><strong><code>3.2.1</code></strong></td>
+<td style="text-align: center;"><code>&gt;=3.2.1</code></td>
+<td style="text-align: left;"><strong>High (Dependabot #26):</strong> Remote Code Execution (RCE) where submodule <code>.git</code> paths were validated only after cloning into untrusted repositories.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>graphql-core</code></strong></td>
+<td style="text-align: center;"><code>3.2.11</code></td>
+<td style="text-align: center;"><strong><code>3.2.13</code></strong></td>
+<td style="text-align: center;"><code>&gt;=3.2.12</code></td>
+<td style="text-align: left;"><strong>High (Dependabot #24 &amp; #25):</strong> Denial of Service (DoS) via comment tokens bypassing <code>max_tokens</code> parser limits and quadratic complexity in <code>OverlappingFieldsCanBeMerged</code> validation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>opentelemetry-api</code></strong></td>
+<td style="text-align: center;"><code>1.44.0</code></td>
+<td style="text-align: center;"><strong><code>1.45.1</code></strong></td>
+<td style="text-align: center;"><code>&gt;=1.45.1</code></td>
+<td style="text-align: left;"><strong>Moderate (Dependabot #23):</strong> Unbounded <code>tracestate</code> W3C header parsing resulting in CPU/memory exhaustion (<code>opentelemetry-sdk</code> &amp; <code>opentelemetry-proto</code> upgraded in lockstep to <code>1.45.1</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>cryptography</code></strong></td>
+<td style="text-align: center;"><code>&lt;50.0.0</code></td>
+<td style="text-align: center;"><strong><code>&gt;=50.0.0</code></strong></td>
+<td style="text-align: center;"><code>&gt;=50.0.0</code></td>
+<td style="text-align: left;"><strong>High:</strong> Enforces modern OpenSSL bindings and X.509 certificate verification primitives.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-codeql-sast-hardening-cwe-020-incomplete-url-substring-sanitization">8.2 CodeQL SAST Hardening (<code>CWE-020: Incomplete URL Substring Sanitization</code>)</h3>
+<p>During automated <code>CodeQL</code> analysis (<code>py/incomplete-url-substring-sanitization</code>), naive substring or prefix checks on URLs and domains are vulnerable to subdomain/suffix spoofing (e.g., <code>https://iam.googleapis.com.attacker.com/projects/123</code> or <code>deployer@proj.iam.gserviceaccount.com.attacker.com</code>).</p>
+<p>In <code>src/devsecops/orchestrator.py</code> (<code>GcpOidcWorkloadIdentitySimulator.validate_claims</code>), OIDC claim verification is hardened using RFC-compliant URL parsing (<code>urllib.parse.urlparse</code>) and exact domain label matching:</p>
+<ol>
+<li><strong>OIDC Audience (<code>aud</code>) Verification:</strong></li>
+<li>Parses <code>audience</code> with <code>urllib.parse.urlparse(audience)</code>.</li>
+<li>Enforces exact equality on <code>parsed_audience.scheme == "https"</code> and <code>parsed_audience.hostname == "iam.googleapis.com"</code>, combined with path prefix <code>/projects/</code>.</li>
+<li><strong>GCP IAM Service Account (<code>service_account</code>) Verification:</strong></li>
+<li>Partitions the email identifier via <code>sa.partition("@")</code> and rejects embedded path/scheme characters (<code>/</code> or <code>:</code>).</li>
+<li>Splits the domain into labels and verifies the exact 4-label GCP IAM structure: <code>&lt;project-id&gt;.iam.gserviceaccount.com</code> (<code>sa_domain_parts[1:] == ["iam", "gserviceaccount", "com"]</code>).</li>
+<li><strong>Regression Testing:</strong></li>
+<li>Verified via spoofed-domain unit tests in <code>tests/test_devsecops_orchestrator.py</code>.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

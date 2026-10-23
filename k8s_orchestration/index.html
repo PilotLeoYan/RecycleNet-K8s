@@ -1,0 +1,2091 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="API documentation and reference for RecycleNet-K8s">
+      
+      
+        <meta name="author" content="LeoYan">
+      
+      
+      
+        <link rel="prev" href="../serving_architecture/">
+      
+      
+        <link rel="next" href="../devsecops_cicd/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Kubernetes Orchestration - RecycleNet MLOps Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#recyclenet-k8s-cloud-native-orchestration-with-local-kubernetes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="RecycleNet MLOps Docs" class="md-header__button md-logo" aria-label="RecycleNet MLOps Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RecycleNet MLOps Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Kubernetes Orchestration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/PilotLeoYan/RecycleNet-K8s" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RecycleNet-K8s
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture & MLOps
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../serving_architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Serving Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Kubernetes Orchestration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../devsecops_cicd/" class="md-tabs__link">
+          
+  
+  
+  DevSecOps & Cloud Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/components/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="RecycleNet MLOps Docs" class="md-nav__button md-logo" aria-label="RecycleNet MLOps Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RecycleNet MLOps Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/PilotLeoYan/RecycleNet-K8s" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    RecycleNet-K8s
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & MLOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../serving_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serving Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Orchestration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-executive-summary-orchestration-philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Executive Summary &amp; Orchestration Philosophy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Executive Summary &amp; Orchestration Philosophy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-engineering-objectives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Engineering Objectives
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-declarative-architecture-cluster-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Declarative Architecture &amp; Cluster Topology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Declarative Architecture &amp; Cluster Topology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#declarative-manifest-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Declarative Manifest Inventory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-multi-stage-zero-trust-containerization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Multi-Stage Zero-Trust Containerization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Multi-Stage Zero-Trust Containerization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#python-container-architecture-dockerfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Container Architecture (Dockerfile)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rust-container-architecture-dockerfilerust" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rust Container Architecture (Dockerfile.rust)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zero-trust-security-hardening-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zero-Trust Security Hardening Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-resource-governance-qos-classes-and-oomkilled-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Resource Governance, QoS Classes, and OOMKilled Prevention
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Resource Governance, QoS Classes, and OOMKilled Prevention">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#linux-cgroups-v2-governance-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux cgroups v2 Governance Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quality-of-service-qos-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality of Service (QoS) Classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-health-probes-zero-downtime-rolling-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Health Probes &amp; Zero-Downtime Rolling Updates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Health Probes &amp; Zero-Downtime Rolling Updates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#liveness-probe-vs-readiness-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Liveness Probe vs. Readiness Probe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zero-downtime-rolling-update-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zero-Downtime Rolling Update Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-horizontal-pod-autoscaler-hpa-v2-control-loop-dynamics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Horizontal Pod Autoscaler (HPA v2) &amp; Control Loop Dynamics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Horizontal Pod Autoscaler (HPA v2) &amp; Control Loop Dynamics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mathematical-control-loop-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mathematical Control Loop Formula
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stabilization-windows-anti-flapping-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stabilization Windows &amp; Anti-Flapping Policies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-step-by-step-practical-local-lab-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Step-by-Step Practical Local Lab Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Step-by-Step Practical Local Lab Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-1-initialize-local-minikube-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Initialize Local Minikube Cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-enable-metrics-server-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Enable Metrics Server Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-build-container-images-inside-minikubes-docker-daemon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Build Container Images Inside Minikube's Docker Daemon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-deploy-declarative-manifests-monitor-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Deploy Declarative Manifests &amp; Monitor Rollout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-live-hpa-autoscaling-stress-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Live HPA Autoscaling Stress Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-automated-lab-execution-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Automated Lab Execution Scripts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Automated Lab Execution Scripts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#linux-macos-wsl2-scriptsk8s_local_labsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux / macOS / WSL2 (scripts/k8s_local_lab.sh)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows-powershell-scriptsk8s_local_labps1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows PowerShell (scripts/k8s_local_lab.ps1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-offline-simulation-static-manifest-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Offline Simulation &amp; Static Manifest Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DevSecOps & Cloud Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    DevSecOps & Cloud Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../devsecops_cicd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp_cloud_run_deployment_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Cloud Run Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utilities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-executive-summary-orchestration-philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Executive Summary &amp; Orchestration Philosophy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Executive Summary &amp; Orchestration Philosophy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-engineering-objectives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Engineering Objectives
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-declarative-architecture-cluster-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Declarative Architecture &amp; Cluster Topology
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Declarative Architecture &amp; Cluster Topology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#declarative-manifest-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Declarative Manifest Inventory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-multi-stage-zero-trust-containerization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Multi-Stage Zero-Trust Containerization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Multi-Stage Zero-Trust Containerization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#python-container-architecture-dockerfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Container Architecture (Dockerfile)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rust-container-architecture-dockerfilerust" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rust Container Architecture (Dockerfile.rust)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zero-trust-security-hardening-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zero-Trust Security Hardening Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-resource-governance-qos-classes-and-oomkilled-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Resource Governance, QoS Classes, and OOMKilled Prevention
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Resource Governance, QoS Classes, and OOMKilled Prevention">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#linux-cgroups-v2-governance-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux cgroups v2 Governance Mechanics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quality-of-service-qos-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality of Service (QoS) Classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-health-probes-zero-downtime-rolling-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Health Probes &amp; Zero-Downtime Rolling Updates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Health Probes &amp; Zero-Downtime Rolling Updates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#liveness-probe-vs-readiness-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Liveness Probe vs. Readiness Probe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zero-downtime-rolling-update-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zero-Downtime Rolling Update Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-horizontal-pod-autoscaler-hpa-v2-control-loop-dynamics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Horizontal Pod Autoscaler (HPA v2) &amp; Control Loop Dynamics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Horizontal Pod Autoscaler (HPA v2) &amp; Control Loop Dynamics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mathematical-control-loop-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mathematical Control Loop Formula
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stabilization-windows-anti-flapping-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stabilization Windows &amp; Anti-Flapping Policies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-step-by-step-practical-local-lab-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Step-by-Step Practical Local Lab Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Step-by-Step Practical Local Lab Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-1-initialize-local-minikube-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Initialize Local Minikube Cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-enable-metrics-server-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Enable Metrics Server Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-build-container-images-inside-minikubes-docker-daemon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Build Container Images Inside Minikube's Docker Daemon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-deploy-declarative-manifests-monitor-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Deploy Declarative Manifests &amp; Monitor Rollout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-live-hpa-autoscaling-stress-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Live HPA Autoscaling Stress Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-automated-lab-execution-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Automated Lab Execution Scripts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Automated Lab Execution Scripts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#linux-macos-wsl2-scriptsk8s_local_labsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux / macOS / WSL2 (scripts/k8s_local_lab.sh)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows-powershell-scriptsk8s_local_labps1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows PowerShell (scripts/k8s_local_lab.ps1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-offline-simulation-static-manifest-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Offline Simulation &amp; Static Manifest Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="recyclenet-k8s-cloud-native-orchestration-with-local-kubernetes">☸️ RecycleNet-K8s: Cloud-Native Orchestration with Local Kubernetes</h1>
+<h2 id="1-executive-summary-orchestration-philosophy">1. Executive Summary &amp; Orchestration Philosophy</h2>
+<p>In modern production Machine Learning systems, delivering high inference performance on a single machine is only half the battle. Real-world systems must guarantee <strong>high availability (HA)</strong>, <strong>fault tolerance</strong>, <strong>predictable latency under burst load</strong>, and <strong>zero-downtime rolling updates</strong>.</p>
+<p>Derived from Google's internal cluster management system (<strong>Borg</strong>), <strong>Kubernetes (K8s)</strong> has emerged as the global standard for cloud-native workload orchestration. <strong>RecycleNet-K8s</strong> designs and validates a complete, production-grade Kubernetes deployment architecture that can be executed <strong>locally with zero cloud costs</strong> using <a href="https://minikube.sigs.k8s.io/">Minikube</a> or <a href="https://kind.sigs.k8s.io/">Kind</a>.</p>
+<h3 id="key-engineering-objectives">Key Engineering Objectives</h3>
+<ul>
+<li><strong>High Availability &amp; Redundancy:</strong> Decoupled multi-tier deployment (Python FastAPI baseline and Rust Axum high-performance edge tier) running at a baseline of 2 replicas each with Pod Anti-Affinity.</li>
+<li><strong>Zero-Trust Security:</strong> Containers execute under unprivileged non-root users (<code>appuser</code>, UID 10001), drop all Linux kernel capabilities (<code>drop: [ALL]</code>), and prohibit privilege escalation.</li>
+<li><strong>Resource Governance &amp; QoS:</strong> Rigorous CPU and Memory requests and limits configured to guarantee a <strong>Burstable</strong> Quality of Service (QoS) class, preventing catastrophic <code>OOMKilled</code> (Exit Code 137) crashes.</li>
+<li><strong>Deterministic Traffic Gating:</strong> Decoupled Liveness (<code>/healthz</code>) and Readiness (<code>/ready</code>) probes ensure traffic is never routed to uninitialized model weights, while zero-downtime rolling updates (<code>maxSurge: 1, maxUnavailable: 0</code>) guarantee uninterrupted service.</li>
+<li><strong>Dynamic Autoscaling (HPA v2):</strong> Closed-loop Horizontal Pod Autoscaler targeting 70% CPU utilization, scaling from 2 to 5 replicas with aggressive scale-up burst absorption and conservative cooldown stabilization against pod thrashing.</li>
+</ul>
+<hr />
+<h2 id="2-declarative-architecture-cluster-topology">2. Declarative Architecture &amp; Cluster Topology</h2>
+<p>The RecycleNet Kubernetes infrastructure adopts a declarative, GitOps-ready layout organized under <code>k8s/</code>.</p>
+<pre class="mermaid"><code>flowchart TD
+    subgraph External["External Network / Edge Clients"]
+        Client["IoT Smart Bin / Mobile Client"]
+    end
+
+    subgraph Cluster["Minikube Local Kubernetes Cluster"]
+        subgraph IngressLayer["Ingress &amp; Networking Tier"]
+            Ingress["Ingress Controller&lt;br/&gt;&lt;code&gt;recyclenet-ingress&lt;/code&gt;&lt;br/&gt;Host: recyclenet.local&lt;br/&gt;TLS Termination"]
+            Service["Service (ClusterIP)&lt;br/&gt;&lt;code&gt;recyclenet-service&lt;/code&gt;&lt;br/&gt;Ports: 8000 (Python), 8080 (Rust)"]
+        end
+
+        subgraph ConfigLayer["Configuration &amp; Secret Management"]
+            ConfigMap["ConfigMap&lt;br/&gt;&lt;code&gt;recyclenet-config&lt;/code&gt;&lt;br/&gt;PORT, MODEL_PATH, LOG_LEVEL"]
+            Secret["Secret (Opaque)&lt;br/&gt;&lt;code&gt;recyclenet-secret&lt;/code&gt;&lt;br/&gt;API_KEY, TELEMETRY_TOKEN, TLS"]
+        end
+
+        subgraph ComputeLayer["Inference Workloads Tier"]
+            subgraph PythonTier["Python FastAPI Deployment (apps/v1)"]
+                PyPod1["Pod 1&lt;br/&gt;recyclenet-api&lt;br/&gt;250m CPU / 512Mi RAM"]
+                PyPod2["Pod 2&lt;br/&gt;recyclenet-api&lt;br/&gt;250m CPU / 512Mi RAM"]
+                PyPodN["Pod 3..5&lt;br/&gt;(Dynamic Replicas)"]
+            end
+
+            subgraph RustTier["Rust Axum Deployment (apps/v1)"]
+                RustPod1["Pod 1&lt;br/&gt;recyclenet-rust-api&lt;br/&gt;100m CPU / 64Mi RAM"]
+                RustPod2["Pod 2&lt;br/&gt;recyclenet-rust-api&lt;br/&gt;100m CPU / 64Mi RAM"]
+            end
+        end
+
+        subgraph TelemetryLayer["Telemetry &amp; Autoscaling Engine"]
+            MetricsServer["Metrics Server&lt;br/&gt;&lt;code&gt;kube-system/metrics-server&lt;/code&gt;&lt;br/&gt;cAdvisor Metrics Scraper"]
+            HPA["HorizontalPodAutoscaler (v2)&lt;br/&gt;&lt;code&gt;recyclenet-hpa&lt;/code&gt;&lt;br/&gt;Target: 70% CPU (Min: 2, Max: 5)"]
+        end
+    end
+
+    Client --&gt;|HTTPS :443| Ingress
+    Ingress --&gt;|Route /| Service
+    Service --&gt;|TargetPort 8000| PyPod1 &amp; PyPod2 &amp; PyPodN
+    Service --&gt;|TargetPort 8080| RustPod1 &amp; RustPod2
+
+    ConfigMap -.-&gt;|envFrom &amp; configMapKeyRef| PyPod1 &amp; PyPod2 &amp; RustPod1 &amp; RustPod2
+    Secret -.-&gt;|envFrom &amp; secretKeyRef| PyPod1 &amp; PyPod2 &amp; RustPod1 &amp; RustPod2
+    Secret -.-&gt;|tls secretName| Ingress
+
+    MetricsServer -.-&gt;|Poll cgroups v2 CPU/Mem| PyPod1 &amp; PyPod2 &amp; PyPodN
+    HPA --&gt;|Query Metrics| MetricsServer
+    HPA --&gt;|"Scale Replicas (scaleTargetRef)"| PythonTier</code></pre>
+<h3 id="declarative-manifest-inventory">Declarative Manifest Inventory</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Manifest File</th>
+<th style="text-align: left;">API Version &amp; Kind</th>
+<th style="text-align: left;">Primary Role &amp; Governance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>k8s/kustomization.yaml</code></td>
+<td style="text-align: left;"><code>kustomize.config.k8s.io/v1beta1</code></td>
+<td style="text-align: left;">Root deployment order orchestration: Config -&gt; Workloads -&gt; Networking -&gt; Autoscaler.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s/configmap.yaml</code></td>
+<td style="text-align: left;"><code>v1/ConfigMap</code></td>
+<td style="text-align: left;">Non-sensitive runtime variables: ports (<code>8000</code>, <code>8080</code>), ONNX model path, logging levels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s/secret.yaml</code></td>
+<td style="text-align: left;"><code>v1/Secret</code></td>
+<td style="text-align: left;">Base64-encoded authentication tokens, telemetry shared keys, and self-signed TLS certs.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s/deployment.yaml</code></td>
+<td style="text-align: left;"><code>apps/v1/Deployment</code></td>
+<td style="text-align: left;">Baseline Python FastAPI workload (2 replicas, non-root UID 10001, Burstable QoS, probes).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s/deployment-rust.yaml</code></td>
+<td style="text-align: left;"><code>apps/v1/Deployment</code></td>
+<td style="text-align: left;">High-performance Rust edge workload (2 replicas, 64Mi requests, sub-millisecond execution).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s/service.yaml</code></td>
+<td style="text-align: left;"><code>v1/Service</code></td>
+<td style="text-align: left;">Internal <code>ClusterIP</code> virtual IP router exposing port <code>8000</code> (Python) and port <code>8080</code> (Rust).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s/hpa.yaml</code></td>
+<td style="text-align: left;"><code>autoscaling/v2/HorizontalPodAutoscaler</code></td>
+<td style="text-align: left;">Dynamic closed-loop autoscaler scaling Python replicas from 2 to 5 based on 70% CPU.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>k8s/ingress.yaml</code></td>
+<td style="text-align: left;"><code>networking.k8s.io/v1/Ingress</code></td>
+<td style="text-align: left;">NGINX-based layer-7 reverse proxy with TLS termination and upload size buffers (20m).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-multi-stage-zero-trust-containerization">3. Multi-Stage Zero-Trust Containerization</h2>
+<p>To minimize image bloat, eliminate build tools from runtime environments, and eliminate Common Vulnerabilities and Exposures (CVEs), both Python and Rust tiers utilize multi-stage Docker builds.</p>
+<h3 id="python-container-architecture-dockerfile">Python Container Architecture (<code>Dockerfile</code>)</h3>
+<ul>
+<li><strong>Stage 1 (Builder):</strong> Uses <code>python:3.14-slim-bookworm</code> with Astral <code>uv</code> copied from <code>ghcr.io/astral-sh/uv:latest</code>. Compiles deterministic dependencies with bytecode compilation (<code>UV_COMPILE_BYTECODE=1</code>) and cache mounts (<code>--mount=type=cache,target=/root/.cache/uv</code>), downloading the MobileNetV3 ONNX model weights directly from Hugging Face.</li>
+<li><strong>Stage 2 (Runtime):</strong> Minimal <code>python:3.14-slim-bookworm</code> runtime containing only the compiled virtual environment (<code>/app/.venv</code>) and model artifacts.</li>
+</ul>
+<h3 id="rust-container-architecture-dockerfilerust">Rust Container Architecture (<code>Dockerfile.rust</code>)</h3>
+<ul>
+<li><strong>Stage 1 (Builder):</strong> Uses <code>rust:1.85-slim-bookworm</code>, downloads the Microsoft ONNX Runtime C dynamic shared library (<code>libonnxruntime.so.1.20.1</code>), compiles the optimized release binary via <code>cargo build --release</code>, and downloads ONNX weights.</li>
+<li><strong>Stage 2 (Runtime):</strong> Lightweight <code>debian:bookworm-slim</code> containing only the shared libraries, CA certificates, and the single static binary (<code>/app/rust_inference</code>).</li>
+</ul>
+<h3 id="zero-trust-security-hardening-comparison">Zero-Trust Security Hardening Comparison</h3>
+<pre class="mermaid"><code>flowchart LR
+    subgraph ZeroTrust["Pod Security Standards (Baseline &amp; Restricted)"]
+        direction TB
+        A["Non-Root Enforcement&lt;br/&gt;runAsNonRoot: true&lt;br/&gt;runAsUser: 10001&lt;br/&gt;runAsGroup: 10001"]
+        B["Privilege Isolation&lt;br/&gt;allowPrivilegeEscalation: false"]
+        C["Linux Capability Dropping&lt;br/&gt;capabilities.drop: [ALL]"]
+        D["Filesystem Protection&lt;br/&gt;fsGroup: 10001"]
+    end</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Security Dimension</th>
+<th style="text-align: left;">Python Serving Container</th>
+<th style="text-align: left;">Rust Edge Container</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Base OS</strong></td>
+<td style="text-align: left;"><code>python:3.14-slim-bookworm</code></td>
+<td style="text-align: left;"><code>debian:bookworm-slim</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>System User</strong></td>
+<td style="text-align: left;"><code>appuser</code> (UID: <code>10001</code>, GID: <code>10001</code>)</td>
+<td style="text-align: left;"><code>appuser</code> (UID: <code>10001</code>, GID: <code>10001</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Login Shell</strong></td>
+<td style="text-align: left;"><code>/bin/false</code> (no shell access)</td>
+<td style="text-align: left;"><code>/bin/false</code> (no shell access)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Home Directory</strong></td>
+<td style="text-align: left;">Disabled (<code>--no-create-home</code>)</td>
+<td style="text-align: left;">Disabled (<code>--no-create-home</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Root Privileges</strong></td>
+<td style="text-align: left;">Fully Dropped</td>
+<td style="text-align: left;">Fully Dropped</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Capability Set</strong></td>
+<td style="text-align: left;"><code>ALL</code> dropped</td>
+<td style="text-align: left;"><code>ALL</code> dropped</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Privilege Escalation</strong></td>
+<td style="text-align: left;"><code>false</code></td>
+<td style="text-align: left;"><code>false</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Final Image Size</strong></td>
+<td style="text-align: left;"><code>~1.2 GB</code></td>
+<td style="text-align: left;"><code>&lt; 45 MB</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-resource-governance-qos-classes-and-oomkilled-prevention">4. Resource Governance, QoS Classes, and OOMKilled Prevention</h2>
+<p>In deep learning serving, memory and CPU allocation is critical. If a container exceeds its memory limits, the Linux kernel Out-Of-Memory (OOM) killer terminates the process instantly with <strong>Exit Code 137</strong> (<code>SIGKILL</code>).</p>
+<h3 id="linux-cgroups-v2-governance-mechanics">Linux cgroups v2 Governance Mechanics</h3>
+<ul>
+<li><strong>CPU Requests:</strong> Configured via CFS (Completely Fair Scheduler) shares (<code>cpu.weight</code>). Kubernetes guarantees this proportion of CPU time to the pod under node contention.</li>
+<li><strong>CPU Limits:</strong> Enforced via CFS bandwidth quotas (<code>cpu.cfs_quota_us</code> / <code>cpu.cfs_period_us</code>). If a pod exceeds this limit, its threads are throttled but the container is not killed.</li>
+<li><strong>Memory Requests:</strong> Used by <code>kube-scheduler</code> to place pods on nodes with sufficient unreserved RAM (<code>memory.min</code> / <code>memory.low</code>).</li>
+<li><strong>Memory Limits:</strong> Hard memory ceiling (<code>memory.max</code>). When total RSS + page cache exceeds this value, the kernel triggers an immediate OOM kill event.</li>
+</ul>
+<h3 id="quality-of-service-qos-classification">Quality of Service (QoS) Classification</h3>
+<p>Kubernetes assigns one of three QoS classes based on resource definitions:
+1. <strong>Guaranteed:</strong> <code>requests == limits</code> for all CPU and memory resources.
+2. <strong>Burstable:</strong> <code>requests &lt; limits</code>, allowing pods to utilize spare node capacity during traffic bursts while maintaining strict guarantees.
+3. <strong>BestEffort:</strong> No requests or limits specified (highest risk of being evicted under memory pressure).</p>
+<p>RecycleNet-K8s configures <strong>Burstable QoS</strong> for both services, ensuring efficient cluster bin-packing while safeguarding against node starvation:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Workload Dimension</th>
+<th style="text-align: left;">Python API (<code>recyclenet-deployment</code>)</th>
+<th style="text-align: left;">Rust API (<code>recyclenet-rust-deployment</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>QoS Class</strong></td>
+<td style="text-align: left;"><code>Burstable</code></td>
+<td style="text-align: left;"><code>Burstable</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CPU Request</strong></td>
+<td style="text-align: left;"><code>250m</code> (0.25 core)</td>
+<td style="text-align: left;"><code>100m</code> (0.1 core)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CPU Limit</strong></td>
+<td style="text-align: left;"><code>1000m</code> (1.0 core)</td>
+<td style="text-align: left;"><code>500m</code> (0.5 core)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Memory Request</strong></td>
+<td style="text-align: left;"><code>512Mi</code></td>
+<td style="text-align: left;"><code>64Mi</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Memory Limit</strong></td>
+<td style="text-align: left;"><code>1Gi</code> (1024Mi)</td>
+<td style="text-align: left;"><code>128Mi</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>OOM Headroom</strong></td>
+<td style="text-align: left;">100% burst buffer (<code>512Mi</code> $\to$ <code>1Gi</code>)</td>
+<td style="text-align: left;">100% burst buffer (<code>64Mi</code> $\to$ <code>128Mi</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>High Availability Anti-Affinity</strong></td>
+<td style="text-align: left;">Soft (<code>preferredDuringScheduling</code>)</td>
+<td style="text-align: left;">Soft (<code>preferredDuringScheduling</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-health-probes-zero-downtime-rolling-updates">5. Health Probes &amp; Zero-Downtime Rolling Updates</h2>
+<h3 id="liveness-probe-vs-readiness-probe">Liveness Probe vs. Readiness Probe</h3>
+<pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    participant Kubelet as kubelet
+    participant Pod as Pod (Container)
+    participant Endpoints as Service Endpoints Router
+    participant Client as External Ingress Traffic
+
+    Note over Pod: Container starting up...
+    Kubelet-&gt;&gt;Pod: GET /healthz (Liveness Probe)
+    Pod--&gt;&gt;Kubelet: 200 OK (Process is alive)
+
+    Kubelet-&gt;&gt;Pod: GET /ready (Readiness Probe)
+    Note over Pod: Model ONNX weights still compiling into memory...
+    Pod--&gt;&gt;Kubelet: 503 Service Unavailable (Not ready)
+    Note over Endpoints: Pod NOT added to Endpoints pool. 0% traffic routed.
+
+    Note over Pod: ONNX Session compilation complete!
+    Kubelet-&gt;&gt;Pod: GET /ready (Readiness Probe)
+    Pod--&gt;&gt;Kubelet: 200 OK (Model ready)
+    Note over Endpoints: Pod added to active Endpoints pool!
+    Client-&gt;&gt;Endpoints: POST /predict
+    Endpoints-&gt;&gt;Pod: Forward inference request</code></pre>
+<ul>
+<li><strong>Liveness Probe (<code>/healthz</code>):</strong> Verifies the event loop (Uvicorn or Tokio) is responsive. If an unhandled deadlock occurs, <code>kubelet</code> restarts the container after <code>failureThreshold: 3</code>.</li>
+<li><strong>Readiness Probe (<code>/ready</code>):</strong> Verifies the deep learning model weights and ONNX session are resident in RAM. Traffic is routed to the pod <strong>only after</strong> this probe returns <code>200 OK</code>.</li>
+</ul>
+<h3 id="zero-downtime-rolling-update-strategy">Zero-Downtime Rolling Update Strategy</h3>
+<p>Upgrading model versions or application logic must never disrupt client requests:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">strategy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RollingUpdate</span>
+<span class="w">  </span><span class="nt">rollingUpdate</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">maxSurge</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">    </span><span class="nt">maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</code></pre></div>
+<ul>
+<li><code>maxSurge: 1</code>: During an update, Kubernetes starts 1 new pod (reaching 3 temporary pods) before terminating any old ones.</li>
+<li><code>maxUnavailable: 0</code>: Guarantees that at least 2 healthy pods are actively answering traffic at every millisecond during the deployment rollout.</li>
+</ul>
+<hr />
+<h2 id="6-horizontal-pod-autoscaler-hpa-v2-control-loop-dynamics">6. Horizontal Pod Autoscaler (HPA v2) &amp; Control Loop Dynamics</h2>
+<p>The <code>HorizontalPodAutoscaler</code> (<code>autoscaling/v2</code>) continuously reconciles desired replica counts against actual resource consumption gathered by the <code>metrics-server</code>.</p>
+<pre class="mermaid"><code>flowchart LR
+    M["metrics-server&lt;br/&gt;cAdvisor Scraper"] --&gt;|Current CPU %| C{"HPA Control Loop&lt;br/&gt;T = 15s"}
+    C --&gt;|Formula Replicas| S["Scale Controller&lt;br/&gt;scaleTargetRef"]
+    S --&gt;|Patch spec.replicas| D["Deployment&lt;br/&gt;recyclenet-deployment"]</code></pre>
+<h3 id="mathematical-control-loop-formula">Mathematical Control Loop Formula</h3>
+<p>The Kubernetes HPA controller evaluates replica demand using the standard formula:</p>
+<p>$$\text{desiredReplicas} = \left\lceil \text{currentReplicas} \times \left( \frac{\text{currentMetricValue}}{\text{desiredMetricValue}} \right) \right\rceil$$</p>
+<p>For example, when 2 replicas run at <strong>140% CPU</strong> (due to a burst of image classification requests) against the target of <strong>70%</strong>:</p>
+<p>$$\text{desiredReplicas} = \left\lceil 2 \times \left( \frac{140}{70} \right) \right\rceil = \lceil 2 \times 2 \rceil = 4 \text{ replicas}$$</p>
+<h3 id="stabilization-windows-anti-flapping-policies">Stabilization Windows &amp; Anti-Flapping Policies</h3>
+<p>To prevent "pod flapping" (rapid scale-up followed immediately by destructive scale-down):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">behavior</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">scaleUp</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">stabilizationWindowSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">    </span><span class="nt">selectPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Max</span>
+<span class="w">    </span><span class="nt">policies</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Percent</span>
+<span class="w">        </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">        </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pods</span>
+<span class="w">        </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">        </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span>
+<span class="w">  </span><span class="nt">scaleDown</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">stabilizationWindowSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+<span class="w">    </span><span class="nt">selectPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Min</span>
+<span class="w">    </span><span class="nt">policies</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pods</span>
+<span class="w">        </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">        </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</code></pre></div>
+<ol>
+<li><strong>Scale-Up (<code>stabilizationWindowSeconds: 0</code>):</strong> Immediate response. Upon detecting load, the controller scales up immediately (doubling capacity or adding 2 pods every 15 seconds) to prevent tail latency degradation.</li>
+<li><strong>Scale-Down (<code>stabilizationWindowSeconds: 60</code>):</strong> Conservative cooldown. The autoscaler inspects the peak metric over the past 60 seconds before removing any pod, shedding only 1 replica every 30 seconds.</li>
+</ol>
+<hr />
+<h2 id="7-step-by-step-practical-local-lab-guide">7. Step-by-Step Practical Local Lab Guide</h2>
+<p>This guide walks through executing the complete 5-step local Kubernetes lab on a local workstation.</p>
+<h3 id="prerequisites">Prerequisites</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Tool</th>
+<th style="text-align: left;">Recommended Version</th>
+<th style="text-align: left;">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Docker Desktop / Docker Engine</strong></td>
+<td style="text-align: left;">$\ge 24.0$</td>
+<td style="text-align: left;">Container runtime and Minikube driver.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Minikube</strong></td>
+<td style="text-align: left;">$\ge 1.34$</td>
+<td style="text-align: left;">Local certified single-node Kubernetes cluster.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>kubectl</strong></td>
+<td style="text-align: left;">$\ge 1.30$</td>
+<td style="text-align: left;">Kubernetes CLI management tool.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>k6</strong></td>
+<td style="text-align: left;">$\ge 0.50$</td>
+<td style="text-align: left;">High-performance load testing engine.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>uv</strong></td>
+<td style="text-align: left;">$\ge 0.5$</td>
+<td style="text-align: left;">Fast Python package and script runner.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="step-1-initialize-local-minikube-cluster">Step 1: Initialize Local Minikube Cluster</h3>
+<p>Start Minikube with the Docker driver, allocating sufficient compute resources (4 vCPUs and 4096 MB RAM):</p>
+<div class="highlight"><pre><span></span><code>minikube<span class="w"> </span>start<span class="w"> </span>--driver<span class="o">=</span>docker<span class="w"> </span>--cpus<span class="o">=</span><span class="m">4</span><span class="w"> </span>--memory<span class="o">=</span><span class="m">4096</span>
+</code></pre></div>
+<p>Verify cluster connectivity:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>cluster-info
+kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>wide
+</code></pre></div>
+<hr />
+<h3 id="step-2-enable-metrics-server-addon">Step 2: Enable Metrics Server Addon</h3>
+<p>The Kubernetes Metrics Server scrapes resource metrics from <code>cAdvisor</code> running inside <code>kubelet</code>. It is required for HPA v2:</p>
+<div class="highlight"><pre><span></span><code>minikube<span class="w"> </span>addons<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>metrics-server
+</code></pre></div>
+<p>Verify that the metrics pod is running:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>metrics-server
+</code></pre></div>
+<hr />
+<h3 id="step-3-build-container-images-inside-minikubes-docker-daemon">Step 3: Build Container Images Inside Minikube's Docker Daemon</h3>
+<p>To prevent pushing images to an external registry and pulling them over the internet, point your terminal's Docker client directly to Minikube's internal Docker daemon:</p>
+<p><strong>On Linux / macOS / WSL2 / Git Bash:</strong>
+<div class="highlight"><pre><span></span><code><span class="nb">eval</span><span class="w"> </span><span class="k">$(</span>minikube<span class="w"> </span>docker-env<span class="k">)</span>
+docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>recyclenet-api:local<span class="w"> </span>.
+docker<span class="w"> </span>build<span class="w"> </span>-f<span class="w"> </span>Dockerfile.rust<span class="w"> </span>-t<span class="w"> </span>recyclenet-rust:local<span class="w"> </span>.
+</code></pre></div></p>
+<p><strong>On Windows PowerShell:</strong>
+<div class="highlight"><pre><span></span><code><span class="p">&amp;</span> <span class="n">minikube</span> <span class="n">-p</span> <span class="n">minikube</span> <span class="n">docker-env</span> <span class="p">-</span><span class="n">-shell</span> <span class="n">powershell</span> <span class="p">|</span> <span class="nb">Invoke-Expression</span>
+<span class="n">docker</span> <span class="n">build</span> <span class="n">-t</span> <span class="n">recyclenet-api</span><span class="p">:</span><span class="n">local</span> <span class="p">.</span>
+<span class="n">docker</span> <span class="n">build</span> <span class="o">-f</span> <span class="n">Dockerfile</span><span class="p">.</span><span class="n">rust</span> <span class="n">-t</span> <span class="n">recyclenet-rust</span><span class="p">:</span><span class="n">local</span> <span class="p">.</span>
+</code></pre></div></p>
+<p>Verify the images are present in the Minikube daemon:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>images<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>recyclenet
+</code></pre></div>
+<hr />
+<h3 id="step-4-deploy-declarative-manifests-monitor-rollout">Step 4: Deploy Declarative Manifests &amp; Monitor Rollout</h3>
+<p>Deploy all Kubernetes resources using Kustomize:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-k<span class="w"> </span>k8s/
+</code></pre></div>
+<p>Monitor rollout status until all pods are ready:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deployment/recyclenet-deployment<span class="w"> </span>--timeout<span class="o">=</span>120s
+kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deployment/recyclenet-rust-deployment<span class="w"> </span>--timeout<span class="o">=</span>120s
+</code></pre></div>
+<p>Check deployed resources:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>all,hpa,ingress<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>recyclenet
+</code></pre></div>
+<hr />
+<h3 id="step-5-live-hpa-autoscaling-stress-test">Step 5: Live HPA Autoscaling Stress Test</h3>
+<p>Open a separate terminal to expose the service via port forwarding:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/recyclenet-service<span class="w"> </span><span class="m">8000</span>:8000<span class="w"> </span><span class="m">8080</span>:8080
+</code></pre></div>
+<p>In your main terminal, launch the <code>k6</code> stress test script targeting the Python endpoint:</p>
+<div class="highlight"><pre><span></span><code>k6<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span><span class="nv">TARGET_URL</span><span class="o">=</span>http://localhost:8000<span class="w"> </span>benchmarks/k6_load_test.js
+</code></pre></div>
+<p>While <code>k6</code> ramps up virtual users (from 10 to 60 VUs), watch the HPA controller scale pods in real time:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>hpa<span class="w"> </span>recyclenet-hpa<span class="w"> </span>-w
+</code></pre></div>
+<p>In another terminal, observe new pods being scheduled:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>recyclenet<span class="w"> </span>-w
+</code></pre></div>
+<p><strong>Observed Scaling Lifecycle:</strong>
+1. <strong>Initial Idle:</strong> 2 replicas, CPU usage at <code>1% / 70%</code>.
+2. <strong>Stress Ramp-Up:</strong> CPU jumps to <code>125% / 70%</code>. HPA calculates <code>desiredReplicas = 4</code>.
+3. <strong>Scale-Up Event:</strong> Deployment scales from 2 to 4 pods within 15 seconds.
+4. <strong>Peak Load:</strong> CPU hits <code>160% / 70%</code>. Deployment reaches max capacity: 5 pods.
+5. <strong>Cooldown Phase:</strong> <code>k6</code> finishes. CPU drops to <code>0% / 70%</code>.
+6. <strong>Stabilized Scale-Down:</strong> After the 60-second stabilization window, the controller gradually scales down back to 2 replicas (1 replica every 30 seconds).</p>
+<hr />
+<h2 id="8-automated-lab-execution-scripts">8. Automated Lab Execution Scripts</h2>
+<p>To automate the 5 steps into a single reproducible command, RecycleNet provides automated scripts for both POSIX and Windows environments:</p>
+<h3 id="linux-macos-wsl2-scriptsk8s_local_labsh">Linux / macOS / WSL2 (<code>scripts/k8s_local_lab.sh</code>)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Preview all commands without running Minikube (Dry-Run mode)</span>
+./scripts/k8s_local_lab.sh<span class="w"> </span>--dry-run<span class="w"> </span>all
+
+<span class="c1"># Execute full 5-step lab end-to-end</span>
+./scripts/k8s_local_lab.sh<span class="w"> </span>all
+
+<span class="c1"># Execute granular lifecycle stages</span>
+./scripts/k8s_local_lab.sh<span class="w"> </span>start<span class="w">    </span><span class="c1"># Steps 1 &amp; 2</span>
+./scripts/k8s_local_lab.sh<span class="w"> </span>build<span class="w">    </span><span class="c1"># Step 3</span>
+./scripts/k8s_local_lab.sh<span class="w"> </span>deploy<span class="w">   </span><span class="c1"># Step 4</span>
+./scripts/k8s_local_lab.sh<span class="w"> </span>stress<span class="w">   </span><span class="c1"># Step 5</span>
+./scripts/k8s_local_lab.sh<span class="w"> </span>status<span class="w">   </span><span class="c1"># Cluster inspection</span>
+./scripts/k8s_local_lab.sh<span class="w"> </span>clean<span class="w">    </span><span class="c1"># Resource teardown</span>
+</code></pre></div>
+<h3 id="windows-powershell-scriptsk8s_local_labps1">Windows PowerShell (<code>scripts/k8s_local_lab.ps1</code>)</h3>
+<div class="highlight"><pre><span></span><code><span class="c"># Preview all commands without running Minikube (Dry-Run mode)</span>
+<span class="p">.\</span><span class="n">scripts</span><span class="p">\</span><span class="n">k8s_local_lab</span><span class="p">.</span><span class="n">ps1</span> <span class="n">-DryRun</span> <span class="n">-Action</span> <span class="n">all</span>
+
+<span class="c"># Execute full 5-step lab end-to-end</span>
+<span class="p">.\</span><span class="n">scripts</span><span class="p">\</span><span class="n">k8s_local_lab</span><span class="p">.</span><span class="n">ps1</span> <span class="n">-Action</span> <span class="n">all</span>
+
+<span class="c"># Granular actions</span>
+<span class="p">.\</span><span class="n">scripts</span><span class="p">\</span><span class="n">k8s_local_lab</span><span class="p">.</span><span class="n">ps1</span> <span class="n">-Action</span> <span class="n">deploy</span>
+<span class="p">.\</span><span class="n">scripts</span><span class="p">\</span><span class="n">k8s_local_lab</span><span class="p">.</span><span class="n">ps1</span> <span class="n">-Action</span> <span class="n">stress</span>
+<span class="p">.\</span><span class="n">scripts</span><span class="p">\</span><span class="n">k8s_local_lab</span><span class="p">.</span><span class="n">ps1</span> <span class="n">-Action</span> <span class="n">status</span>
+<span class="p">.\</span><span class="n">scripts</span><span class="p">\</span><span class="n">k8s_local_lab</span><span class="p">.</span><span class="n">ps1</span> <span class="n">-Action</span> <span class="n">clean</span>
+</code></pre></div>
+<hr />
+<h2 id="9-offline-simulation-static-manifest-validation">9. Offline Simulation &amp; Static Manifest Validation</h2>
+<p>For environments without Docker virtualization or Minikube installed (such as headless CI workers), RecycleNet includes a standalone, offline simulation engine built under SOLID principles:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Validate manifests, compute QoS classes, and simulate HPA scaling curves</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.k8s.orchestrator
+</code></pre></div>
+<p>This command parses the raw YAML files, verifies schema compliance, computes exact QoS classes, validates non-root security contexts, and executes the mathematical HPA control loop against synthetic load profiles.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
