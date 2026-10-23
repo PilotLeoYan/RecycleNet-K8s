@@ -56,7 +56,9 @@ nav:
   - Architecture & MLOps: architecture.md
   - Serving Architecture: serving_architecture.md
   - Kubernetes Orchestration: k8s_orchestration.md
-  - DevSecOps & Cloud Deployment: devsecops_cicd.md
+  - DevSecOps & Cloud Deployment:
+      - CI/CD Architecture: devsecops_cicd.md
+      - GCP Cloud Run Deployment: gcp_cloud_run_deployment_guide.md
   - API Reference:
       - Components: reference/components.md
       - Pipelines: reference/pipeline.md

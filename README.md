@@ -155,7 +155,7 @@ flowchart TB
     end
     subgraph CD["CD · push to main"]
         direction LR
-        OIDC["GCP OIDC<br/>Workload Identity Federation"] --> GAR["Artifact Registry<br/>sha-commit tag"] --> RUN["Cloud Run<br/>1 CPU · 1Gi · 1–5 instances"]
+        OIDC["GCP OIDC<br/>Workload Identity Federation"] --> GAR["Artifact Registry<br/>sha-commit tag"] --> RUN["Cloud Run<br/>1 CPU · 1Gi · 0–2 instances"]
     end
     TEST --> OIDC
 ```
@@ -172,6 +172,41 @@ make devsecops    # offline CI gates + OIDC + Cloud Run simulation
 ```
 
 Workflows: `ci.yaml`, `cd.yaml`, `codeql.yml`, `dependency-review.yml`, `docs.yml` and `pr-validation.yml`. On `main`, `cd.yaml` authenticates to GCP with OIDC, pushes `sha-<commit>` to Artifact Registry and deploys Cloud Run. Without `GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_SERVICE_ACCOUNT_EMAIL` it runs in dry-run validation mode.
+
+### Manual GCP Cloud Run deployment (zero-cost)
+
+The repository ships two Bash scripts for one-command local deployment and teardown. Both enforce **scale-to-zero** (`--min-instances=0`) and a hard cap of two instances so the service costs **$0.00 when idle** and stays within GCP's permanent free tier for small workloads.
+
+```mermaid
+flowchart LR
+    Auth["gcloud auth login"] --> Deploy["make deploy-gcp"]
+    Deploy --> GAR2["Push image to<br/>Artifact Registry"]
+    GAR2 --> CR["Cloud Run service<br/>min=0 · max=2 · 1 CPU · 1 GiB"]
+    CR --> URL["Public HTTPS URL<br/>/docs · /predict/ · /health"]
+```
+
+```bash
+# 1. Authenticate once
+gcloud auth login
+
+# 2. Deploy (build → push → Cloud Run, ~3–4 min)
+make deploy-gcp
+
+# 3. Call the live API
+curl -X POST "https://<SERVICE-URL>/predict/"      -F "file=@path/to/waste.jpg"
+
+# 4. Open the interactive Swagger UI in any browser
+open "https://<SERVICE-URL>/docs"
+
+# 5. Tear down after the demo to keep the bill at $0.00
+make teardown-gcp
+```
+
+`make deploy-gcp` runs [`scripts/deploy_gcp.sh`](scripts/deploy_gcp.sh), which automatically enables the required GCP APIs, provisions the Artifact Registry repository, configures the Docker credential helper, builds the multi-stage image, and deploys to Cloud Run. `make teardown-gcp` runs [`scripts/teardown_gcp.sh`](scripts/teardown_gcp.sh) to delete the service and registry, leaving no residual resources.
+
+> **GCP free tier:** 2 million requests, 360,000 GB-seconds, and 180,000 vCPU-seconds per month. A demo with ~10 users consumes less than 0.001 % of that budget.
+
+See [docs/gcp_cloud_run_deployment_guide.md](docs/gcp_cloud_run_deployment_guide.md) for the full step-by-step walkthrough, manual commands, and CI/CD OIDC secrets reference.
 
 Supply-chain hardening is pinned via `[tool.uv] override-dependencies` and `uv.lock`:
 
@@ -229,7 +264,7 @@ docs/                MkDocs Material documentation
 k8s/                 Kustomize manifests: deployments, service, HPA, ingress, config
 models/              Local ONNX artifacts and model card (git-ignored, published on HF)
 rust_inference/      Axum + ort microservice
-scripts/             k8s_local_lab.sh / k8s_local_lab.ps1 automation
+scripts/             deploy_gcp.sh · teardown_gcp.sh · k8s_local_lab.sh / k8s_local_lab.ps1
 src/api/             FastAPI inference tier
 src/components/      ingestion, transforms, model, train step, metrics, evals, MLflow
 src/config/          Pydantic settings schema
@@ -246,6 +281,7 @@ tests/               pytest unit and integration suites
 - [Serving architecture](docs/serving_architecture.md)
 - [Kubernetes orchestration](docs/k8s_orchestration.md)
 - [DevSecOps & CI/CD](docs/devsecops_cicd.md)
+- [GCP Cloud Run deployment guide](docs/gcp_cloud_run_deployment_guide.md)
 - [API reference: components](docs/reference/components.md) · [pipelines](docs/reference/pipeline.md) · [utilities](docs/reference/utils.md)
 - Rendered site: [pilotleoyan.github.io/RecycleNet-K8s](https://pilotleoyan.github.io/RecycleNet-K8s/)
 
