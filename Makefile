@@ -1,4 +1,4 @@
-.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test smoke-export train train-best hpo export super-train mlflow api format lint test security devsecops check
+.PHONY: sync-cpu sync-gpu sync-dev-cpu sync-dev-gpu smoke-test smoke-export train train-best hpo export super-train mlflow api format lint test security devsecops check deploy-gcp teardown-gcp
 
 CONFIG ?= configs/config.yaml
 EXTRA_ARGS ?=
@@ -73,3 +73,9 @@ devsecops:
 
 check:
 	uv run pre-commit run --all-files
+
+deploy-gcp:
+	./scripts/deploy_gcp.sh
+
+teardown-gcp:
+	./scripts/teardown_gcp.sh

@@ -97,8 +97,8 @@ jobs:
             --port=8000
             --memory=1Gi
             --cpu=1
-            --min-instances=1
-            --max-instances=5
+            --min-instances=0
+            --max-instances=2
             --concurrency=80
             --allow-unauthenticated
 
