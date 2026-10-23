@@ -65,8 +65,7 @@ Every deployment enforces:
 
 ## 3. 🛠️ Quick Automated Deployment (One Command)
 
-The repository ships a fully automated script at
-[`scripts/deploy_gcp.sh`](../scripts/deploy_gcp.sh).
+The repository ships a fully automated script at `scripts/deploy_gcp.sh`.
 
 ### Step 1 — Authenticate `gcloud`
 
@@ -242,7 +241,7 @@ leaving the GCP project at **$0.00 ongoing cost**.
 
 ## 7. 🔁 CI/CD Automated Deployment (GitHub Actions)
 
-The [`cd.yaml`](../.github/workflows/cd.yaml) workflow runs automatically on
+The `.github/workflows/cd.yaml` workflow runs automatically on
 every push to `main` (when GCP OIDC secrets are configured) and mirrors the
 manual steps above:
 
