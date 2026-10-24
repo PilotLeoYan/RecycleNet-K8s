@@ -59,9 +59,8 @@ try {
 # 3. Verificación de MLflow
 Write-Header "2. Verificación de Trazabilidad MLOps (MLflow)"
 try {
-    $env:MLFLOW_ALLOW_FILE_STORE = "true"
-    uv run python -c "import mlflow; mlflow.set_tracking_uri('sqlite:///mlflow.db'); print('Conexión exitosa a sqlite:///mlflow.db')"
-    Write-Step "Base de datos y tracking de MLflow verificados (sqlite:///mlflow.db)" "OK"
+    uv run python scripts/populate_mlflow_runs.py
+    Write-Step "Base de datos y tracking de MLflow verificados con runs cargados (sqlite:///mlflow.db)" "OK"
 } catch {
     Write-Step "Error al conectar con MLflow: $_" "ERR"
 }
