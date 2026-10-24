@@ -152,6 +152,16 @@ function Test-HpaScaling {
         Write-LabLog -Message "kubectl get pods -l app=recyclenet" -Level 'DRYRUN'
     }
     else {
+        $kubectlInstalled = Get-Command kubectl -ErrorAction SilentlyContinue
+        if (-not $kubectlInstalled) {
+            Write-LabLog -Message "kubectl no fue detectado en PATH. No hay un cluster local activo en esta maquina." -Level 'WARN'
+            Write-LabLog -Message "Para simular el flujo sin requerir Minikube/Docker, ejecute con -DryRun:" -Level 'INFO'
+            Write-LabLog -Message "  .\scripts\k8s_local_lab.ps1 -DryRun -Action stress" -Level 'INFO'
+            Write-LabLog -Message "O ejecute la demostracion interactiva en vivo con:" -Level 'INFO'
+            Write-LabLog -Message "  uv run python scripts/demo_k8s_live.py" -Level 'INFO'
+            return
+        }
+
         Write-LabLog -Message "Starting background port-forwarding to recyclenet-service (8000:8000, 8080:8080)..." -Level 'INFO'
         $pfProcess = Start-Process -PassThru -NoNewWindow kubectl -ArgumentList "port-forward svc/recyclenet-service 8000:8000 8080:8080"
 
@@ -167,7 +177,7 @@ function Test-HpaScaling {
             else {
                 Write-LabLog -Message "k6 binary not found in PATH." -Level 'WARN'
                 Write-LabLog -Message "Executing Python benchmark suite fallback: uv run python -m benchmarks.benchmark_suite..." -Level 'INFO'
-                uv run python benchmarks/benchmark_suite.py --iterations 30
+                uv run python benchmarks/benchmark_suite.py --requests 30
             }
 
             Write-Host ""

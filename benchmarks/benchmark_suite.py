@@ -573,6 +573,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--requests",
+        "--iterations",
+        dest="requests",
         type=int,
         default=50,
         help="Number of benchmark requests to execute (default: 50)",
