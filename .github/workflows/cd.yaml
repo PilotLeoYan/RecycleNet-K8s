@@ -88,7 +88,7 @@ jobs:
 
       - name: Deploy to Cloud Run
         if: steps.gcp_config.outputs.configured == 'true'
-        uses: google-github-actions/deploy-cloudrun@v2
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           service: ${{ env.SERVICE_NAME }}
           image: ${{ steps.image_tag.outputs.image_uri }}:${{ steps.image_tag.outputs.tag }}
