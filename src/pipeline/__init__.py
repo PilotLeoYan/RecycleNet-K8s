@@ -1,5 +1,6 @@
 """RecycleNet distributed training and hyperparameter optimization pipelines."""
 
+from .export_onnx import ONNXExportPipeline
 from .hpo_pipeline import HPOPipeline
 from .ray_resources import assign_ray_resources
 from .reproducibility import make_reproducibility
@@ -10,6 +11,7 @@ __all__ = [
     "TrainPipeline",
     "HPOPipeline",
     "SuperTrainPipeline",
+    "ONNXExportPipeline",
     "make_reproducibility",
     "assign_ray_resources",
 ]

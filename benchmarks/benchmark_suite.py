@@ -242,7 +242,7 @@ class HttpBenchmarkTarget:
                             for conn in proc.net_connections(kind="inet"):
                                 if conn.laddr.port == port:
                                     return float(proc.memory_info().rss / (1024 * 1024))
-                        except psutil.AccessDenied, psutil.NoSuchProcess:
+                        except (psutil.AccessDenied, psutil.NoSuchProcess):
                             continue
             except Exception:
                 pass
@@ -430,11 +430,10 @@ class BenchmarkRunner:
 
             probs_a: dict[str, float] = res_a.get("class_probabilities", {})
             probs_b: dict[str, float] = res_b.get("class_probabilities", {})
-            for key in probs_a:
-                if key in probs_b:
-                    diff = abs(float(probs_a[key]) - float(probs_b[key]))
-                    if diff > max_diff:
-                        max_diff = diff
+            for key in set(probs_a) | set(probs_b):
+                diff = abs(float(probs_a.get(key, 0.0)) - float(probs_b.get(key, 0.0)))
+                if diff > max_diff:
+                    max_diff = diff
 
         top1_rate = agreements / evaluated if evaluated > 0 else 0.0
         passed = (top1_rate >= 1.0) and (max_diff <= tol)

@@ -43,8 +43,9 @@ def export_to_onnx(
         RecycleNetException: If export fails.
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    model = model.cpu()
     model.eval()
-    dummy_input = torch.randn(input_shape)
+    dummy_input = torch.randn(input_shape, device="cpu")
 
     try:
         torch.onnx.export(
@@ -103,11 +104,14 @@ def verify_numerical_parity(
     Raises:
         RecycleNetException: If max difference exceeds tolerance.
     """
-    dummy_input = torch.randn(input_shape)
+    dummy_input = torch.randn(input_shape, device="cpu")
 
+    model = model.cpu()
     model.eval()
     with torch.no_grad():
-        torch_out: np.ndarray[Any, np.dtype[np.float32]] = model(dummy_input).numpy()
+        torch_out: np.ndarray[Any, np.dtype[np.float32]] = (
+            model(dummy_input).detach().cpu().numpy()
+        )
 
     session = ort.InferenceSession(str(onnx_path))
     ort_inputs = {session.get_inputs()[0].name: dummy_input.numpy()}
