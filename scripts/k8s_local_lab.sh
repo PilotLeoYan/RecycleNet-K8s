@@ -230,7 +230,7 @@ step5_stress_test_hpa() {
         else
             log_warn "k6 binary not found in PATH."
             log_info "Executing Python benchmark suite fallback: uv run python -m benchmarks.benchmark_suite..."
-            uv run python benchmarks/benchmark_suite.py --iterations 30 || true
+            uv run python -m benchmarks.benchmark_suite --requests 30 || true
         fi
 
         log_info "=== Autoscaler Scaling Status ==="

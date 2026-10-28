@@ -167,7 +167,7 @@ function Test-HpaScaling {
             else {
                 Write-LabLog -Message "k6 binary not found in PATH." -Level 'WARN'
                 Write-LabLog -Message "Executing Python benchmark suite fallback: uv run python -m benchmarks.benchmark_suite..." -Level 'INFO'
-                uv run python benchmarks/benchmark_suite.py --iterations 30
+                uv run python -m benchmarks.benchmark_suite --requests 30
             }
 
             Write-Host ""
